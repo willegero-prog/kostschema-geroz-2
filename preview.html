@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Preview Meal Plan Generator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #4facfe 75%, #00f2fe 100%);
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
+            padding: 20px;
+        }
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        .container {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            padding: 50px 40px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            max-width: 500px;
+            width: 100%;
+        }
+        h1 {
+            color: white;
+            margin-bottom: 10px;
+            font-size: 2.5rem;
+            font-weight: 600;
+        }
+        .subtitle {
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 40px;
+            font-size: 1.1rem;
+        }
+        .button-group {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        a {
+            display: inline-block;
+            padding: 18px 35px;
+            background: rgba(0, 122, 255, 0.8);
+            color: white;
+            text-decoration: none;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 20px rgba(0, 122, 255, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        a:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 30px rgba(0, 122, 255, 0.6);
+            background: rgba(0, 122, 255, 0.9);
+        }
+        a.secondary {
+            background: rgba(255, 255, 255, 0.15);
+            box-shadow: 0 4px 20px rgba(255, 255, 255, 0.2);
+        }
+        a.secondary:hover {
+            background: rgba(255, 255, 255, 0.25);
+            box-shadow: 0 6px 30px rgba(255, 255, 255, 0.3);
+        }
+        .info {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            margin-top: 30px;
+        }
+        .info h3 {
+            color: white;
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+        }
+        .info p {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.9rem;
+            line-height: 1.6;
+            margin-bottom: 10px;
+        }
+        .info code {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.9);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Meal Plan Generator</h1>
+        <p class="subtitle">Create your personalized nutrition plan</p>
+        
+        <div class="button-group">
+            <a href="index.html">🚀 Open Website</a>
+            <a href="index.html" class="secondary">📱 Start Creating Meal Plan</a>
+        </div>
+        
+        <div class="info">
+            <h3>💡 Quick Start</h3>
+            <p><strong>Option 1:</strong> Click the button above to open directly</p>
+            <p><strong>Option 2:</strong> Run a local server:</p>
+            <p style="margin-top: 8px;"><code>python3 server.py</code></p>
+            <p style="margin-top: 8px; font-size: 0.85rem;">Then visit: <code>http://localhost:8000</code></p>
+        </div>
+    </div>
+</body>
+</html>
+
+

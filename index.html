@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>kostschema GRATIS</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Hamburger Menu -->
+    <div class="hamburger-menu" id="hamburger-menu">
+        <div class="hamburger-icon" id="hamburger-icon">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+        <div class="hamburger-overlay" id="hamburger-overlay">
+            <div class="hamburger-content">
+                <button class="menu-option" id="info-btn">
+                    <span class="menu-icon">ℹ️</span>
+                    <span class="menu-text">Om Kostplanen</span>
+                </button>
+                <a href="https://www.tiktok.com/@master.gero" target="_blank" rel="noopener noreferrer" class="menu-option tiktok-menu-option">
+                    <svg class="menu-tiktok-icon" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/>
+                    </svg>
+                    <span class="menu-text">TikTok</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Info Modal -->
+    <div class="info-modal" id="info-modal">
+        <div class="info-modal-content">
+            <button class="info-modal-close" id="info-modal-close">&times;</button>
+            <h3>Vad är denna kostplan?</h3>
+            <div class="info-text">
+                <p>Denna kostplan är <strong>inte</strong> en vanlig måltidsplan med färdiga recept. Istället får du en <strong>mall</strong> som visar exakt hur mycket protein, kolhydrater och fett du behöver äta vid varje måltid.</p>
+                
+                <h4>Varför är detta bättre?</h4>
+                <ul>
+                    <li><strong>Du väljer själv:</strong> Ät vad du vill, så länge du följer mängderna</li>
+                    <li><strong>Ingen tråkighet:</strong> Byt ut maträtter när du vill</li>
+                    <li><strong>Lättare att följa:</strong> Ingen risk att tröttna på samma recept hela tiden</li>
+                    <li><strong>Lär dig mer:</strong> Du förstår bättre vad din kropp behöver</li>
+                </ul>
+                
+                <p>Kort sagt: Du får friheten att äta det du vill, men med rätt mängder för att nå ditt mål.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="glass-panel">
+            <h1 class="title">kostschema <span class="gratis-text">GRATIS</span></h1>
+            <p class="subtitle">Skapa din personliga kostplan</p>
+            
+            <!-- Step Indicator -->
+            <div class="step-indicator">
+                <div class="step active" data-step="1">
+                    <div class="step-number">1</div>
+                    <div class="step-label">Mål</div>
+                </div>
+                <div class="step" data-step="2">
+                    <div class="step-number">2</div>
+                    <div class="step-label">Kroppsinfo</div>
+                </div>
+                <div class="step" data-step="3">
+                    <div class="step-number">3</div>
+                    <div class="step-label">Kalorier</div>
+                </div>
+                <div class="step" data-step="4">
+                    <div class="step-number">4</div>
+                    <div class="step-label">Träning</div>
+                </div>
+                <div class="step" data-step="5">
+                    <div class="step-number">5</div>
+                    <div class="step-label">Måltider</div>
+                </div>
+                <div class="step" data-step="6">
+                    <div class="step-number">6</div>
+                    <div class="step-label">Plan</div>
+                </div>
+            </div>
+
+            <!-- Step 1: Goal Selection -->
+            <div class="step-content active" id="step1">
+                <h2>Vad är ditt mål?</h2>
+                <div class="goal-options">
+                    <button class="goal-btn" data-goal="bulk">
+                        <span class="goal-text">bulk</span>
+                    </button>
+                    <button class="goal-btn" data-goal="maintain">
+                        <span class="goal-text">maintain</span>
+                    </button>
+                    <button class="goal-btn" data-goal="cut">
+                        <span class="goal-text">deff</span>
+                    </button>
+                </div>
+                
+                <!-- Navigation Buttons -->
+                <div class="navigation">
+                    <button id="prev-btn" class="nav-btn" style="display: none;">Föregående</button>
+                    <button id="next-btn" class="nav-btn primary">Nästa</button>
+                </div>
+                
+                <!-- Footer -->
+                <footer class="footer">
+                    <div class="footer-content">
+                        <div class="disclaimer">
+                            <p><strong>Notera:</strong> Detta verktyg är endast för utbildningsändamål och ger inte medicinsk eller näringsrådgivning.</p>
+                        </div>
+                        <div class="social-links">
+                            <a href="https://www.tiktok.com/@master.gero" target="_blank" rel="noopener noreferrer" class="tiktok-link" aria-label="Följ på TikTok">
+                                <svg class="tiktok-icon" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/>
+                                </svg>
+                                <span class="tiktok-text">följ mig för dagliga kost och träningstips</span>
+                            </a>
+                        </div>
+                    </div>
+                    <div class="footer-credit">
+                        <p>Skapad av <span class="credit-name">GeroZ</span></p>
+                    </div>
+                </footer>
+            </div>
+
+            <!-- Step 2: Body Information -->
+            <div class="step-content" id="step2">
+                <h2>Din Kroppsinformation</h2>
+                <div class="form-group">
+                    <label for="age">Ålder (år)</label>
+                    <input type="number" id="age" min="1" max="120" placeholder="t.ex. 17">
+                </div>
+                <div class="form-group">
+                    <label for="height">Längd (cm)</label>
+                    <input type="number" id="height" min="50" max="250" placeholder="t.ex. 188">
+                </div>
+                <div class="form-group">
+                    <label for="weight">Vikt (kg)</label>
+                    <input type="number" id="weight" min="20" max="300" step="0.1" placeholder="t.ex. 67">
+                </div>
+                <div class="form-group">
+                    <label for="activity-level">Aktivitetsnivå</label>
+                    <div class="activity-selector">
+                        <button class="activity-btn" data-activity="sedentary">Stillasittande (lite/ingen träning)</button>
+                        <button class="activity-btn" data-activity="light">Lätt aktiv (1-3 dagar/vecka)</button>
+                        <button class="activity-btn" data-activity="moderate" data-selected="true">Måttlig aktiv (3-5 dagar/vecka)</button>
+                        <button class="activity-btn" data-activity="active">Aktiv (6-7 dagar/vecka)</button>
+                        <button class="activity-btn" data-activity="veryActive">Mycket aktiv (träning + fysiskt arbete)</button>
+                    </div>
+                    <small>Välj den aktivitetsnivå som bäst beskriver din livsstil för mer exakt kaloriberäkning</small>
+                </div>
+                <div class="form-group">
+                    <label for="bmr">BMR (Basal Metabolic Rate)</label>
+                    <input type="number" id="bmr" min="500" max="5000" placeholder="Beräknas automatiskt" readonly>
+                    <small>Din BMR är antalet kalorier din kropp förbränner i vila (beräknas automatiskt)</small>
+                </div>
+                <div class="form-group">
+                    <label for="tdee">TDEE (Total Daily Energy Expenditure)</label>
+                    <input type="number" id="tdee" min="500" max="10000" placeholder="Beräknas automatiskt" readonly>
+                    <small>Din TDEE är totala kalorier du förbränner per dag inklusive alla aktiviteter (beräknas automatiskt)</small>
+                </div>
+                
+                <!-- Navigation Buttons -->
+                <div class="navigation">
+                    <button id="prev-btn" class="nav-btn" style="display: none;">Föregående</button>
+                    <button id="next-btn" class="nav-btn primary">Nästa</button>
+                </div>
+                
+                <!-- Footer -->
+                <footer class="footer">
+                    <div class="footer-content">
+                        <div class="disclaimer">
+                            <p><strong>Notera:</strong> Detta verktyg är endast för utbildningsändamål och ger inte medicinsk eller näringsrådgivning.</p>
+                        </div>
+                        <div class="social-links">
+                            <a href="https://www.tiktok.com/@master.gero" target="_blank" rel="noopener noreferrer" class="tiktok-link" aria-label="Följ på TikTok">
+                                <svg class="tiktok-icon" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/>
+                                </svg>
+                                <span class="tiktok-text">följ mig för dagliga kost och träningstips</span>
+                            </a>
+                        </div>
+                    </div>
+                    <div class="footer-credit">
+                        <p>Skapad av <span class="credit-name">GeroZ</span></p>
+                    </div>
+                </footer>
+            </div>
+
+            <!-- Step 3: Calorie Adjustment -->
+            <div class="step-content" id="step3">
+                <h2>Kalorimål</h2>
+                <div class="form-group">
+                    <label for="calorie-adjustment" id="calorie-label">Kaloriöverskott (kcal)</label>
+                    <input type="number" id="calorie-adjustment" min="0" max="2000" placeholder="t.ex. 500">
+                    <small id="calorie-help">Ange det dagliga kaloriöverskottet du vill uppnå</small>
+                </div>
+                <div class="calorie-guidance" id="calorie-guidance" style="display: none;">
+                    <h4 id="guidance-title">Vad är ett rimligt kaloriöverskott/underskott?</h4>
+                    <div class="guidance-content" id="guidance-content">
+                        <div id="bulk-guidance" style="display: none;">
+                            <p><strong>För att bygga muskler (bulk):</strong></p>
+                            <ul>
+                                <li><strong>200-500 kcal överskott:</strong> Lagom för de flesta. Ger stadig viktökning utan för mycket fett.</li>
+                                <li><strong>500-800 kcal överskott:</strong> Snabbare viktökning men risk för onödig fettlagring.</li>
+                            </ul>
+                        </div>
+                        <div id="cut-guidance" style="display: none;">
+                            <p><strong>För att gå ner i vikt (deff):</strong></p>
+                            <ul>
+                                <li><strong>300-500 kcal underskott:</strong> Lagom för de flesta. Ger stadig viktminskning.</li>
+                                <li><strong>500-800 kcal underskott:</strong> Snabbare viktminskning men kan påverka energi och muskelmassa.</li>
+                            </ul>
+                        </div>
+                        <p><em>Tips: Börja konservativt och justera efter hur din kropp reagerar!</em></p>
+                    </div>
+                </div>
+                
+                <!-- Navigation Buttons -->
+                <div class="navigation">
+                    <button id="prev-btn" class="nav-btn" style="display: none;">Föregående</button>
+                    <button id="next-btn" class="nav-btn primary">Nästa</button>
+                </div>
+                
+                <!-- Footer -->
+                <footer class="footer">
+                    <div class="footer-content">
+                        <div class="disclaimer">
+                            <p><strong>Notera:</strong> Detta verktyg är endast för utbildningsändamål och ger inte medicinsk eller näringsrådgivning.</p>
+                        </div>
+                        <div class="social-links">
+                            <a href="https://www.tiktok.com/@master.gero" target="_blank" rel="noopener noreferrer" class="tiktok-link" aria-label="Följ på TikTok">
+                                <svg class="tiktok-icon" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/>
+                                </svg>
+                                <span class="tiktok-text">följ mig för dagliga kost och träningstips</span>
+                            </a>
+                        </div>
+                    </div>
+                    <div class="footer-credit">
+                        <p>Skapad av <span class="credit-name">GeroZ</span></p>
+                    </div>
+                </footer>
+            </div>
+
+            <!-- Step 4: Training Days -->
+            <div class="step-content" id="step4">
+                <h2>Träningsschema</h2>
+                <p class="instruction">Välj de dagar du tränar styrketräning:</p>
+                <div class="day-selector">
+                    <button class="day-btn" data-day="monday">Måndag</button>
+                    <button class="day-btn" data-day="tuesday">Tisdag</button>
+                    <button class="day-btn" data-day="wednesday">Onsdag</button>
+                    <button class="day-btn" data-day="thursday">Torsdag</button>
+                    <button class="day-btn" data-day="friday">Fredag</button>
+                    <button class="day-btn" data-day="saturday">Lördag</button>
+                    <button class="day-btn" data-day="sunday">Söndag</button>
+                </div>
+                
+                <!-- Navigation Buttons -->
+                <div class="navigation">
+                    <button id="prev-btn" class="nav-btn" style="display: none;">Föregående</button>
+                    <button id="next-btn" class="nav-btn primary">Nästa</button>
+                </div>
+                
+                <!-- Footer -->
+                <footer class="footer">
+                    <div class="footer-content">
+                        <div class="disclaimer">
+                            <p><strong>Notera:</strong> Detta verktyg är endast för utbildningsändamål och ger inte medicinsk eller näringsrådgivning.</p>
+                        </div>
+                        <div class="social-links">
+                            <a href="https://www.tiktok.com/@master.gero" target="_blank" rel="noopener noreferrer" class="tiktok-link" aria-label="Följ på TikTok">
+                                <svg class="tiktok-icon" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/>
+                                </svg>
+                                <span class="tiktok-text">följ mig för dagliga kost och träningstips</span>
+                            </a>
+                        </div>
+                    </div>
+                    <div class="footer-credit">
+                        <p>Skapad av <span class="credit-name">GeroZ</span></p>
+                    </div>
+                </footer>
+            </div>
+
+            <!-- Step 5: Meal Selection -->
+            <div class="step-content" id="step5">
+                <h2>Måltidsstruktur</h2>
+                <p class="instruction">Välj vilka måltider du vill inkludera (Frukost, Lunch och Middag ingår alltid):</p>
+                
+                <div class="meal-structure-container">
+                    <div class="meal-item-fixed">
+                        <span class="meal-label">☀️ Frukost</span>
+                        <span class="meal-status">Ingår alltid</span>
+                    </div>
+                    
+                    <div class="snack-option">
+                        <button class="snack-toggle-btn" id="snack1-btn" data-snack="1">
+                            <span class="snack-label">🍎 Mellanmål</span>
+                            <span class="snack-desc">Mellan Frukost och Lunch</span>
+                            <span class="snack-status">Valfritt</span>
+                        </button>
+                    </div>
+                    
+                    <div class="meal-item-fixed">
+                        <span class="meal-label">🍽️ Lunch</span>
+                        <span class="meal-status">Ingår alltid</span>
+                    </div>
+                    
+                    <div class="snack-option">
+                        <button class="snack-toggle-btn" id="snack2-btn" data-snack="2">
+                            <span class="snack-label">🍎 Mellanmål</span>
+                            <span class="snack-desc">Mellan Lunch och Middag</span>
+                            <span class="snack-status">Valfritt</span>
+                        </button>
+                    </div>
+                    
+                    <div class="meal-item-fixed">
+                        <span class="meal-label">🌙 Middag</span>
+                        <span class="meal-status">Ingår alltid</span>
+                    </div>
+                </div>
+                
+                <!-- Navigation Buttons -->
+                <div class="navigation">
+                    <button id="prev-btn" class="nav-btn" style="display: none;">Föregående</button>
+                    <button id="next-btn" class="nav-btn primary">Nästa</button>
+                </div>
+                
+                <!-- Footer -->
+                <footer class="footer">
+                    <div class="footer-content">
+                        <div class="disclaimer">
+                            <p><strong>Notera:</strong> Detta verktyg är endast för utbildningsändamål och ger inte medicinsk eller näringsrådgivning.</p>
+                        </div>
+                        <div class="social-links">
+                            <a href="https://www.tiktok.com/@master.gero" target="_blank" rel="noopener noreferrer" class="tiktok-link" aria-label="Följ på TikTok">
+                                <svg class="tiktok-icon" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/>
+                                </svg>
+                                <span class="tiktok-text">följ mig för dagliga kost och träningstips</span>
+                            </a>
+                        </div>
+                    </div>
+                    <div class="footer-credit">
+                        <p>Skapad av <span class="credit-name">GeroZ</span></p>
+                    </div>
+                </footer>
+            </div>
+
+            <!-- Step 6: Meal Plan Display -->
+            <div class="step-content" id="step6">
+                <h2>Din Personliga Kostplan</h2>
+                <div id="meal-plan-content"></div>
+                <button id="download-pdf" class="download-btn">Ladda ner som PDF</button>
+                <button id="restart-btn" class="restart-btn">Börja om</button>
+                
+                <!-- Footer inside step 6 -->
+                <footer class="footer">
+                    <div class="footer-content">
+                        <div class="disclaimer">
+                            <p><strong>Notera:</strong> Detta verktyg är endast för utbildningsändamål och ger inte medicinsk eller näringsrådgivning.</p>
+                        </div>
+                        <div class="social-links">
+                            <a href="https://www.tiktok.com/@master.gero" target="_blank" rel="noopener noreferrer" class="tiktok-link" aria-label="Följ på TikTok">
+                                <svg class="tiktok-icon" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/>
+                                </svg>
+                                <span class="tiktok-text">följ mig för dagliga kost och träningstips</span>
+                            </a>
+                        </div>
+                    </div>
+                    <div class="footer-credit">
+                        <p>Skapad av <span class="credit-name">GeroZ</span></p>
+                    </div>
+                </footer>
+            </div>
+
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
+
