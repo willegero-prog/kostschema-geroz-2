@@ -480,7 +480,7 @@
                 <div class="dash-hero-card accent">
                     <span class="dash-hero-label">Dagens kalorimål</span>
                     <span class="dash-hero-value">${calorieTarget} kcal</span>
-                    <span class="dash-hero-sub">Hela dagens kaloriintag från generatorn (TDEE ± överskott/underskott). Ändras först när tillräcklig vikttrend finns.</span>
+                    <span class="dash-hero-sub">Ändras i takt med att din kroppsvikt ökar (om man bulkar), eller också minskar (om man deffar).</span>
                 </div>
                 <div class="dash-hero-card">
                     <span class="dash-hero-label">Vikttrend</span>
