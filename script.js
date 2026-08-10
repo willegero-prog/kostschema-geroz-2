@@ -196,11 +196,17 @@ function initializeEventListeners() {
         }
     });
 
-    // PDF download
-    document.getElementById('download-pdf').addEventListener('click', downloadPDF);
-
-    // Restart button
-    document.getElementById('restart-btn').addEventListener('click', restartMealPlan);
+    // PDF download + restart (supports top buttons injected into meal plan + bottom restart)
+    document.addEventListener('click', (e) => {
+        if (e.target.closest('.download-btn')) {
+            e.preventDefault();
+            downloadPDF();
+        }
+        if (e.target.closest('.restart-btn')) {
+            e.preventDefault();
+            restartMealPlan();
+        }
+    });
 
     // Gender selection
     document.querySelectorAll('.gender-btn').forEach(btn => {
@@ -744,6 +750,10 @@ function displayMealPlan(plan) {
                         <div class="macro-bar-value">${plan.macros.fat}%</div>
                     </div>
                 </div>
+            </div>
+            <div class="plan-actions">
+                <button type="button" id="download-pdf" class="download-btn">Ladda ned som PDF</button>
+                <button type="button" id="restart-btn-top" class="restart-btn">Börja om</button>
             </div>
         </div>
     `;
