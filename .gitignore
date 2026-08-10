@@ -32,3 +32,9 @@ ENV/
 *.tmp
 *.temp
 kostschema-cursor.code-workspace
+
+# Local account/db preview data
+data/*.json
+.env
+.env.local
+node_modules/

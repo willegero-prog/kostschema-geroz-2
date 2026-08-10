@@ -10,6 +10,7 @@ const state = {
     bmr: null,
     tdee: null,
     calorieAdjustment: null,
+    targetWeight: null,
     trainingDays: [],
     mealStructure: null,
     snacks: {
@@ -88,10 +89,13 @@ function updateBMRAndTDEE() {
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
+    window.state = state;
     initializeEventListeners();
     updateStepDisplay();
     setupBMRAutoCalculation();
     setupHamburgerMenu();
+    if (window.AccountUI) AccountUI.initAccountUi();
+    wireAccountMenuButtons();
     
     // Set default activity level button as selected
     const defaultActivityBtn = document.querySelector('.activity-btn[data-activity="moderate"]');
@@ -100,6 +104,26 @@ document.addEventListener('DOMContentLoaded', () => {
         defaultActivityBtn.setAttribute('data-selected', 'true');
     }
 });
+
+function wireAccountMenuButtons() {
+    const closeMenu = () => {
+        document.getElementById('hamburger-icon')?.classList.remove('active');
+        document.getElementById('hamburger-overlay')?.classList.remove('active');
+    };
+
+    document.getElementById('menu-login-btn')?.addEventListener('click', () => {
+        closeMenu();
+        document.getElementById('auth-login-btn')?.click();
+    });
+    document.getElementById('menu-dashboard-btn')?.addEventListener('click', () => {
+        closeMenu();
+        AccountUI.openDashboard();
+    });
+    document.getElementById('menu-logout-btn')?.addEventListener('click', () => {
+        closeMenu();
+        document.getElementById('auth-logout-btn')?.click();
+    });
+}
 
 function setupHamburgerMenu() {
     const hamburgerIcon = document.getElementById('hamburger-icon');
@@ -315,6 +339,7 @@ function restartMealPlan() {
     state.bmr = null;
     state.tdee = null;
     state.calorieAdjustment = null;
+    state.targetWeight = null;
     state.trainingDays = [];
     state.snacks = {
         snack1: false,
@@ -329,6 +354,8 @@ function restartMealPlan() {
     document.getElementById('bmr').value = '';
     document.getElementById('tdee').value = '';
     document.getElementById('calorie-adjustment').value = '';
+    const targetWeightEl = document.getElementById('target-weight');
+    if (targetWeightEl) targetWeightEl.value = '';
     
     // Reset selected buttons
     document.querySelectorAll('.goal-btn').forEach(b => b.classList.remove('selected'));
@@ -391,6 +418,8 @@ function validateCurrentStep() {
             break;
         case 3:
             const calorieInput = document.getElementById('calorie-adjustment').value;
+            const targetWeightInput = document.getElementById('target-weight')?.value;
+            state.targetWeight = targetWeightInput ? parseFloat(targetWeightInput) : null;
             if (state.goal === 'maintain') {
                 state.calorieAdjustment = 0;
             } else {
@@ -753,6 +782,7 @@ function displayMealPlan(plan) {
             </div>
             <div class="plan-actions">
                 <button type="button" id="download-pdf" class="download-btn">Ladda ned som PDF</button>
+                <button type="button" id="save-plan-btn" class="save-plan-btn">Spara kostschema</button>
                 <button type="button" id="restart-btn-top" class="restart-btn">Börja om</button>
             </div>
         </div>
