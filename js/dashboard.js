@@ -480,7 +480,11 @@
                 <div class="dash-hero-card accent">
                     <span class="dash-hero-label">Dagens kalorimål</span>
                     <span class="dash-hero-value">${calorieTarget} kcal</span>
-                    <span class="dash-hero-sub">Ändras i takt med att din kroppsvikt ökar (om man bulkar), eller också minskar (om man deffar).</span>
+                    <span class="dash-hero-sub">${plan.goal === 'cut'
+                        ? 'Ändras i takt med att din kroppsvikt minskar.'
+                        : plan.goal === 'bulk'
+                            ? 'Ändras i takt med att din kroppsvikt ökar.'
+                            : 'Ändras när din vikttrend visar att kalorimålet behöver justeras.'}</span>
                 </div>
                 <div class="dash-hero-card">
                     <span class="dash-hero-label">Vikttrend</span>
