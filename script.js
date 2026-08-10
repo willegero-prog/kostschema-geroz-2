@@ -2,6 +2,7 @@
 const state = {
     currentStep: 1,
     goal: null,
+    gender: null,
     age: null,
     height: null,
     weight: null,
@@ -26,14 +27,12 @@ const macroDistributions = {
 };
 
 // BMR and TDEE calculation functions
-function calculateBMR(age, height, weight) {
-    // Mifflin-St Jeor Equation (most accurate)
-    // BMR = 10 × weight(kg) + 6.25 × height(cm) - 5 × age(years) + 5 (for males)
-    // For simplicity, we'll use a unisex formula that averages male/female
-    // Male: BMR = 10 × weight + 6.25 × height - 5 × age + 5
-    // Female: BMR = 10 × weight + 6.25 × height - 5 × age - 161
-    // Using average: BMR = 10 × weight + 6.25 × height - 5 × age - 78
-    const bmr = (10 * weight) + (6.25 * height) - (5 * age) - 78;
+function calculateBMR(age, height, weight, gender) {
+    // Mifflin-St Jeor Equation
+    // Male:   BMR = 10 × weight(kg) + 6.25 × height(cm) - 5 × age(years) + 5
+    // Female: BMR = 10 × weight(kg) + 6.25 × height(cm) - 5 × age(years) - 161
+    const genderOffset = gender === 'female' ? -161 : 5;
+    const bmr = (10 * weight) + (6.25 * height) - (5 * age) + genderOffset;
     return Math.round(bmr);
 }
 
@@ -54,6 +53,37 @@ function calculateTDEE(bmr, activityLevel = 'moderate') {
     };
     const multiplier = multipliers[activityLevel] || multipliers.moderate;
     return Math.round(bmr * multiplier);
+}
+
+function updateBMRAndTDEE() {
+    const ageInput = document.getElementById('age');
+    const heightInput = document.getElementById('height');
+    const weightInput = document.getElementById('weight');
+    const bmrInput = document.getElementById('bmr');
+    const tdeeInput = document.getElementById('tdee');
+
+    const age = parseFloat(ageInput.value);
+    const height = parseFloat(heightInput.value);
+    const weight = parseFloat(weightInput.value);
+
+    if (state.gender && age && height && weight && age > 0 && height > 0 && weight > 0) {
+        const bmr = calculateBMR(age, height, weight, state.gender);
+        const tdee = calculateTDEE(bmr, state.activityLevel);
+
+        bmrInput.value = bmr;
+        tdeeInput.value = tdee;
+
+        state.bmr = bmr;
+        state.tdee = tdee;
+        state.age = age;
+        state.height = height;
+        state.weight = weight;
+    } else {
+        bmrInput.value = '';
+        tdeeInput.value = '';
+        state.bmr = null;
+        state.tdee = null;
+    }
 }
 
 // Initialize
@@ -111,37 +141,10 @@ function setupBMRAutoCalculation() {
     const ageInput = document.getElementById('age');
     const heightInput = document.getElementById('height');
     const weightInput = document.getElementById('weight');
-    const bmrInput = document.getElementById('bmr');
-    const tdeeInput = document.getElementById('tdee');
-    
-    function updateBMRAndTDEE() {
-        const age = parseFloat(ageInput.value);
-        const height = parseFloat(heightInput.value);
-        const weight = parseFloat(weightInput.value);
-        
-        if (age && height && weight && age > 0 && height > 0 && weight > 0) {
-            const bmr = calculateBMR(age, height, weight);
-            const tdee = calculateTDEE(bmr, state.activityLevel);
-            
-            bmrInput.value = bmr;
-            tdeeInput.value = tdee;
-            
-            // Update state
-            state.bmr = bmr;
-            state.tdee = tdee;
-        } else {
-            bmrInput.value = '';
-            tdeeInput.value = '';
-            state.bmr = null;
-            state.tdee = null;
-        }
-    }
-    
+
     ageInput.addEventListener('input', updateBMRAndTDEE);
     heightInput.addEventListener('input', updateBMRAndTDEE);
     weightInput.addEventListener('input', updateBMRAndTDEE);
-    
-    // Also update when activity level changes (handled in initializeEventListeners)
 }
 
 function initializeEventListeners() {
@@ -199,6 +202,22 @@ function initializeEventListeners() {
     // Restart button
     document.getElementById('restart-btn').addEventListener('click', restartMealPlan);
 
+    // Gender selection
+    document.querySelectorAll('.gender-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            document.querySelectorAll('.gender-btn').forEach(b => {
+                b.classList.remove('selected');
+                b.removeAttribute('data-selected');
+                b.setAttribute('aria-pressed', 'false');
+            });
+            e.currentTarget.classList.add('selected');
+            e.currentTarget.setAttribute('data-selected', 'true');
+            e.currentTarget.setAttribute('aria-pressed', 'true');
+            state.gender = e.currentTarget.dataset.gender;
+            updateBMRAndTDEE();
+        });
+    });
+
     // Activity level selection
     document.querySelectorAll('.activity-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
@@ -209,24 +228,7 @@ function initializeEventListeners() {
             e.currentTarget.classList.add('selected');
             e.currentTarget.setAttribute('data-selected', 'true');
             state.activityLevel = e.currentTarget.dataset.activity;
-            
-            // Recalculate TDEE if BMR is already calculated
-            const ageInput = document.getElementById('age');
-            const heightInput = document.getElementById('height');
-            const weightInput = document.getElementById('weight');
-            const bmrInput = document.getElementById('bmr');
-            const tdeeInput = document.getElementById('tdee');
-            
-            const age = parseFloat(ageInput.value);
-            const height = parseFloat(heightInput.value);
-            const weight = parseFloat(weightInput.value);
-            
-            if (age && height && weight && age > 0 && height > 0 && weight > 0) {
-                const bmr = calculateBMR(age, height, weight);
-                const tdee = calculateTDEE(bmr, state.activityLevel);
-                tdeeInput.value = tdee;
-                state.tdee = tdee;
-            }
+            updateBMRAndTDEE();
         });
     });
 }
@@ -299,6 +301,7 @@ function restartMealPlan() {
     // Reset state
     state.currentStep = 1;
     state.goal = null;
+    state.gender = null;
     state.age = null;
     state.height = null;
     state.weight = null;
@@ -325,6 +328,11 @@ function restartMealPlan() {
     document.querySelectorAll('.goal-btn').forEach(b => b.classList.remove('selected'));
     document.querySelectorAll('.day-btn').forEach(b => b.classList.remove('selected'));
     document.querySelectorAll('.snack-toggle-btn').forEach(b => b.classList.remove('selected'));
+    document.querySelectorAll('.gender-btn').forEach(b => {
+        b.classList.remove('selected');
+        b.removeAttribute('data-selected');
+        b.setAttribute('aria-pressed', 'false');
+    });
     document.querySelectorAll('.activity-btn').forEach(b => {
         b.classList.remove('selected');
         b.removeAttribute('data-selected');
@@ -360,13 +368,18 @@ function validateCurrentStep() {
             state.bmr = parseFloat(document.getElementById('bmr').value);
             state.tdee = parseFloat(document.getElementById('tdee').value);
             
+            if (!state.gender) {
+                alert('Vänligen välj kön (Man eller Kvinna)');
+                return false;
+            }
+
             if (!state.age || !state.height || !state.weight) {
                 alert('Vänligen fyll i Ålder, Längd och Vikt. BMR och TDEE beräknas automatiskt.');
                 return false;
             }
             
             if (!state.bmr || !state.tdee) {
-                alert('BMR och TDEE beräknas. Vänligen se till att Ålder, Längd och Vikt är giltiga nummer.');
+                alert('BMR och TDEE beräknas. Vänligen se till att Kön, Ålder, Längd och Vikt är giltiga.');
                 return false;
             }
             break;
@@ -527,6 +540,7 @@ function generateMealPlan() {
 
     const mealPlan = {
         userInfo: {
+            gender: state.gender,
             age: state.age,
             height: state.height,
             weight: state.weight,
@@ -679,6 +693,10 @@ function displayMealPlan(plan) {
         <div class="plan-header">
             <h3>Din Personliga Kostplan</h3>
             <div class="plan-info">
+                <div class="info-item">
+                    <span class="info-label">Kön</span>
+                    <span class="info-value">${plan.userInfo.gender === 'female' ? 'Kvinna' : 'Man'}</span>
+                </div>
                 <div class="info-item">
                     <span class="info-label">Ålder</span>
                     <span class="info-value">${plan.userInfo.age} år</span>
@@ -904,6 +922,7 @@ function downloadPDF() {
     doc.setTextColor(0, 0, 0);
     
     const bodyInfoLines = [
+        `Kön: ${plan.userInfo.gender === 'female' ? 'Kvinna' : 'Man'}`,
         `Ålder: ${plan.userInfo.age} år`,
         `Längd: ${plan.userInfo.height} cm`,
         `Vikt: ${plan.userInfo.weight} kg`,

@@ -2,11 +2,14 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
 }
 
 html {
     overflow-x: hidden;
     overflow-y: auto;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
 }
 
 :root {
@@ -18,20 +21,27 @@ html {
     --text-secondary: rgba(255, 255, 255, 0.7);
     --shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
     --shadow-hover: 0 12px 48px 0 rgba(31, 38, 135, 0.5);
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-right: env(safe-area-inset-right, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-left: env(safe-area-inset-left, 0px);
 }
 
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
     background: #000000;
     min-height: 100vh;
+    min-height: 100dvh;
     display: flex;
     align-items: flex-start;
     justify-content: center;
-    padding: 20px;
+    padding: max(20px, var(--safe-top)) max(20px, var(--safe-right)) max(20px, var(--safe-bottom)) max(20px, var(--safe-left));
     color: var(--text-primary);
     position: relative;
     overflow-x: hidden;
     overflow-y: auto;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
 }
 
 body::before {
@@ -57,8 +67,8 @@ body::before {
 /* Hamburger Menu */
 .hamburger-menu {
     position: fixed;
-    top: 20px;
-    left: 20px;
+    top: max(20px, calc(var(--safe-top) + 8px));
+    left: max(20px, calc(var(--safe-left) + 8px));
     z-index: 1000;
 }
 
@@ -334,14 +344,13 @@ body::before {
 }
 
 .title {
-    font-size: 2.5rem;
-    font-weight: 600;
+    font-size: 48px;
+    font-weight: 800;
     text-align: center;
     margin-bottom: 10px;
-    background: linear-gradient(135deg, #fff 0%, rgba(255, 255, 255, 0.8) 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    color: #ffffff;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
 }
 
 .gratis-text {
@@ -367,9 +376,11 @@ body::before {
 
 .subtitle {
     text-align: center;
-    color: var(--text-secondary);
+    color: #d1d5db;
     margin-bottom: 40px;
-    font-size: 1.1rem;
+    font-size: 22px;
+    font-weight: 500;
+    line-height: 1.35;
 }
 
 /* Step Indicator */
@@ -1257,6 +1268,56 @@ body::before {
     background: linear-gradient(135deg, rgba(234, 88, 12, 0.6) 0%, rgba(220, 38, 38, 0.5) 100%);
 }
 
+/* Gender Selector */
+.gender-selector {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 10px;
+}
+
+.gender-btn {
+    padding: 14px 20px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.05) 100%);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 12px;
+    color: var(--text-primary);
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    min-height: 48px;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+}
+
+.gender-btn:hover {
+    transform: translateY(-2px) scale(1.01);
+    box-shadow: 0 6px 20px rgba(0, 122, 255, 0.2),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    border-color: rgba(0, 122, 255, 0.5);
+    background: linear-gradient(135deg, rgba(0, 122, 255, 0.2) 0%, rgba(88, 86, 214, 0.15) 100%);
+}
+
+.gender-btn.selected {
+    background: linear-gradient(135deg, rgba(0, 122, 255, 0.4) 0%, rgba(88, 86, 214, 0.3) 100%);
+    border-color: rgba(0, 122, 255, 0.8);
+    box-shadow: 0 4px 20px rgba(0, 122, 255, 0.4),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    color: white;
+}
+
+.gender-btn.selected:hover {
+    box-shadow: 0 0 40px rgba(0, 122, 255, 0.6),
+                inset 0 2px 8px rgba(255, 255, 255, 0.3),
+                0 8px 32px rgba(0, 122, 255, 0.5);
+}
+
 /* Activity Selector */
 .activity-selector {
     display: flex;
@@ -1280,6 +1341,9 @@ body::before {
     text-align: left;
     position: relative;
     overflow: hidden;
+    min-height: 48px;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
 }
 
 .activity-btn::before {
@@ -1445,12 +1509,21 @@ body::before {
 
 /* Responsive Design */
 @media (max-width: 768px) {
+    body {
+        padding: max(16px, var(--safe-top)) max(16px, var(--safe-right)) max(16px, var(--safe-bottom)) max(16px, var(--safe-left));
+    }
+
     .glass-panel {
         padding: 25px;
     }
 
     .title {
-        font-size: 2rem;
+        font-size: 36px;
+    }
+
+    .subtitle {
+        font-size: 18px;
+        margin-bottom: 28px;
     }
 
     .goal-options,
@@ -1509,8 +1582,8 @@ body::before {
     }
 
     .hamburger-menu {
-        top: 15px;
-        left: 15px;
+        top: max(15px, calc(var(--safe-top) + 6px));
+        left: max(15px, calc(var(--safe-left) + 6px));
     }
 
     .info-modal-content {
@@ -1522,6 +1595,136 @@ body::before {
         padding: 15px 30px;
         font-size: 1rem;
         min-width: 200px;
+    }
+
+    .navigation {
+        gap: 12px;
+    }
+
+    .nav-btn,
+    .goal-btn,
+    .gender-btn,
+    .activity-btn,
+    .day-btn,
+    .snack-toggle-btn {
+        -webkit-tap-highlight-color: transparent;
+        touch-action: manipulation;
+    }
+}
+
+/* Small phones (iOS/Android ≤480px) */
+@media (max-width: 480px) {
+    body {
+        padding: max(12px, var(--safe-top)) max(12px, var(--safe-right)) max(12px, var(--safe-bottom)) max(12px, var(--safe-left));
+    }
+
+    .container {
+        margin: 8px auto;
+    }
+
+    .glass-panel {
+        padding: 18px 14px;
+        border-radius: 18px;
+    }
+
+    .title {
+        font-size: 28px;
+        margin-bottom: 6px;
+    }
+
+    .subtitle {
+        font-size: 16px;
+        margin-bottom: 24px;
+    }
+
+    .step-indicator {
+        margin-bottom: 24px;
+        gap: 8px;
+    }
+
+    .step {
+        flex: 0 0 calc(33.333% - 8px);
+    }
+
+    .step-number {
+        width: 32px;
+        height: 32px;
+        font-size: 0.85rem;
+    }
+
+    .step-label {
+        font-size: 0.65rem;
+    }
+
+    .step-content h2 {
+        font-size: 1.25rem;
+        margin-bottom: 16px;
+    }
+
+    .form-group {
+        margin-bottom: 16px;
+    }
+
+    .form-group input,
+    .form-group select {
+        font-size: 16px; /* prevents iOS zoom on focus */
+        padding: 12px 14px;
+    }
+
+    .gender-selector {
+        gap: 10px;
+    }
+
+    .gender-btn {
+        padding: 12px 14px;
+        font-size: 0.95rem;
+    }
+
+    .activity-btn {
+        padding: 12px 14px;
+        font-size: 0.85rem;
+        line-height: 1.35;
+    }
+
+    .day-selector {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+    }
+
+    .navigation {
+        flex-direction: column-reverse;
+        width: 100%;
+    }
+
+    .nav-btn {
+        width: 100%;
+        min-height: 48px;
+    }
+
+    .hamburger-menu {
+        top: max(12px, calc(var(--safe-top) + 4px));
+        left: max(12px, calc(var(--safe-left) + 4px));
+    }
+
+    .hamburger-icon {
+        width: 26px;
+        height: 20px;
+    }
+
+    .info-modal-content {
+        padding: 20px 16px;
+        max-width: 94%;
+        max-height: calc(100dvh - 40px);
+        overflow-y: auto;
+    }
+
+    .footer {
+        margin: 28px 0 12px;
+    }
+
+    .footer-content {
+        padding: 16px;
+        border-radius: 16px;
     }
 }
 

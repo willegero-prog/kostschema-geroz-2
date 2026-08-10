@@ -2,7 +2,7 @@
 <html lang="sv">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>kostschema GRATIS</title>
     <link rel="stylesheet" href="styles.css">
 </head>
@@ -53,8 +53,8 @@
 
     <div class="container">
         <div class="glass-panel">
-            <h1 class="title">kostschema <span class="gratis-text">GRATIS</span></h1>
-            <p class="subtitle">Skapa din personliga kostplan</p>
+            <h1 class="title">Skapa ditt kostschema</h1>
+            <p class="subtitle">Anpassa efter dina mål</p>
             
             <!-- Step Indicator -->
             <div class="step-indicator">
@@ -130,16 +130,24 @@
             <div class="step-content" id="step2">
                 <h2>Din Kroppsinformation</h2>
                 <div class="form-group">
+                    <label>Kön</label>
+                    <div class="gender-selector" role="group" aria-label="Kön">
+                        <button type="button" class="gender-btn" data-gender="male" aria-pressed="false">Man</button>
+                        <button type="button" class="gender-btn" data-gender="female" aria-pressed="false">Kvinna</button>
+                    </div>
+                    <small>Välj kön för korrekt BMR-beräkning (Mifflin-St Jeor)</small>
+                </div>
+                <div class="form-group">
                     <label for="age">Ålder (år)</label>
-                    <input type="number" id="age" min="1" max="120" placeholder="t.ex. 17">
+                    <input type="number" id="age" min="1" max="120" placeholder="t.ex. 23" inputmode="numeric">
                 </div>
                 <div class="form-group">
                     <label for="height">Längd (cm)</label>
-                    <input type="number" id="height" min="50" max="250" placeholder="t.ex. 188">
+                    <input type="number" id="height" min="50" max="250" placeholder="t.ex. 183" inputmode="decimal">
                 </div>
                 <div class="form-group">
                     <label for="weight">Vikt (kg)</label>
-                    <input type="number" id="weight" min="20" max="300" step="0.1" placeholder="t.ex. 67">
+                    <input type="number" id="weight" min="20" max="300" step="0.1" placeholder="t.ex. 67" inputmode="decimal">
                 </div>
                 <div class="form-group">
                     <label for="activity-level">Aktivitetsnivå</label>
