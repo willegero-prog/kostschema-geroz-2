@@ -321,6 +321,7 @@
                     <div class="dash-simple-item"><span>Kolhydrater</span><strong>${plan.macros.carbsG}g</strong></div>
                     <div class="dash-simple-item"><span>Fett</span><strong>${plan.macros.fatG}g</strong></div>
                 </div>
+                <button type="button" class="download-btn dash-download-btn" id="dash-download-current-pdf">Ladda ned som PDF</button>
                 <details class="dash-details">
                     <summary>Visa veckans dagar</summary>
                     <div class="saved-day-list">
@@ -340,7 +341,30 @@
             </div>
 
             <div class="dashboard-section">
-                <h3>4. När systemet ändrat planen</h3>
+                <h3>4. Sparade PDF-versioner</h3>
+                <p class="section-help">Varje gång planen uppdateras sparas en ny PDF-version så du kan se tidigare kostscheman.</p>
+                ${(!(plan.versions || []).length) ? `
+                    <p class="dashboard-empty">Inga sparade versioner ännu.</p>
+                ` : `
+                    <div class="version-list">
+                        ${[...(plan.versions || [])].reverse().map((v, idx) => `
+                            <div class="version-item">
+                                <div class="version-main">
+                                    <strong>${escapeHtml(v.label || 'Kostschema')}</strong>
+                                    <span>${formatDate(v.date)} · ${v.calorieTarget} kcal · ${formatKg(v.weight)}</span>
+                                    <small>${escapeHtml(v.reason || '')}</small>
+                                </div>
+                                <button type="button" class="nav-btn version-download-btn" data-version-id="${v.id}">
+                                    ${idx === 0 ? 'Ladda ned senaste PDF' : 'Ladda ned PDF'}
+                                </button>
+                            </div>
+                        `).join('')}
+                    </div>
+                `}
+            </div>
+
+            <div class="dashboard-section">
+                <h3>5. När systemet ändrat planen</h3>
                 ${adjustments.length === 0 ? `
                     <p class="dashboard-empty">Inga automatiska justeringar ännu. Fortsätt logga vikt i cirka 2–3 veckor.</p>
                 ` : `
@@ -351,6 +375,7 @@
                                 <p>Viktmedel: ${formatKg(a.previousWeightAverage)} → ${formatKg(a.newWeightAverage)}</p>
                                 <p>Nytt kalorimål: ${a.previous.calorieTarget} → <strong>${a.next.calorieTarget} kcal</strong></p>
                                 <small>${escapeHtml(a.reason || '')}</small>
+                                ${a.versionId ? `<button type="button" class="text-link-btn version-download-btn" data-version-id="${a.versionId}">Ladda ned PDF för denna uppdatering</button>` : ''}
                             </div>
                         `).join('')}
                     </div>
@@ -363,6 +388,78 @@
             renderDashboard();
         });
         $('dashboard-back-wizard')?.addEventListener('click', closeDashboard);
+
+        async function downloadVersionPdf(versionId) {
+            try {
+                let version = (plan.versions || []).find((v) => v.id === versionId);
+                if (!version) {
+                    // Fallback: current plan as live version
+                    version = NutritionCore.createVersionSnapshot(plan, {
+                        label: 'Aktuell plan',
+                        reason: 'Nedladdning av aktuell version'
+                    });
+                }
+                const pdfId = `${plan.id}:${version.id}`;
+                const stored = await PlanPdfStore.getPdf(pdfId);
+                if (stored?.blob) {
+                    await PlanPdfStore.downloadStoredPdf(pdfId);
+                    showToast('PDF nedladdad');
+                    return;
+                }
+                const saved = await PlanPdfStore.ensurePdfForVersion(plan, version);
+                // Persist filename onto version if newly created
+                AccountStore.updatePlan(plan.id, (p) => {
+                    p.versions = p.versions || [];
+                    const target = p.versions.find((v) => v.id === version.id);
+                    if (target) target.fileName = saved.fileName || target.fileName;
+                    else p.versions.push(version);
+                });
+                await PlanPdfStore.downloadStoredPdf(pdfId);
+                showToast('PDF nedladdad');
+            } catch (err) {
+                showToast(err.message || 'Kunde inte ladda ned PDF', true);
+            }
+        }
+
+        $('dash-download-current-pdf')?.addEventListener('click', async () => {
+            try {
+                const live = NutritionCore.createVersionSnapshot(plan, {
+                    label: 'Aktuell plan',
+                    reason: 'Senaste kalorier och makron',
+                    date: plan.updatedAt || new Date().toISOString()
+                });
+                const versions = plan.versions || [];
+                const latest = versions[versions.length - 1];
+                const target = (!latest || latest.calorieTarget !== plan.calorieTarget) ? live : latest;
+
+                AccountStore.updatePlan(plan.id, (p) => {
+                    p.versions = p.versions || [];
+                    if (!p.versions.some((v) => v.id === target.id)) {
+                        // Replace transient live id only when needed
+                        if (target === live) p.versions.push(live);
+                    }
+                });
+                const refreshed = AccountStore.getPlan(plan.id);
+                const version = refreshed.versions.find((v) => v.id === target.id)
+                    || refreshed.versions[refreshed.versions.length - 1]
+                    || target;
+                await PlanPdfStore.ensurePdfForVersion(refreshed, version);
+                await PlanPdfStore.downloadStoredPdf(`${plan.id}:${version.id}`);
+                showToast('PDF nedladdad');
+                renderDashboard();
+            } catch (err) {
+                try {
+                    MealPlanPDF.exportMealPlanPdf(NutritionCore.toPdfPlan(plan));
+                    showToast('PDF nedladdad');
+                } catch (e2) {
+                    showToast(e2.message || 'Kunde inte ladda ned PDF', true);
+                }
+            }
+        });
+
+        root.querySelectorAll('.version-download-btn').forEach((btn) => {
+            btn.addEventListener('click', () => downloadVersionPdf(btn.dataset.versionId));
+        });
 
         const weightInput = $('dash-weight-input');
         const dateInput = $('dash-weight-date');
@@ -409,15 +506,26 @@
                     showToast('Vikten ser avvikande ut — klicka igen för att spara ändå', true);
                     return;
                 }
+                let adjustedVersion = null;
                 AccountStore.updatePlan(plan.id, (p) => {
                     WeightEngine.applyWeightLog(p, weight, date);
                     const result = WeightEngine.evaluateAndMaybeAdjust(p);
                     if (result.adjusted) {
+                        adjustedVersion = result.version || null;
                         showToast(`Kostschemat uppdaterades till ${result.adjustment.next.calorieTarget} kcal`);
                     } else {
                         showToast('Dagens vikt sparad');
                     }
                 });
+                if (adjustedVersion) {
+                    const refreshed = AccountStore.getPlan(plan.id);
+                    PlanPdfStore.ensurePdfForVersion(refreshed, adjustedVersion).catch(() => {});
+                    // Also ensure previous latest-1 is stored
+                    const versions = refreshed.versions || [];
+                    if (versions.length >= 2) {
+                        PlanPdfStore.ensurePdfForVersion(refreshed, versions[versions.length - 2]).catch(() => {});
+                    }
+                }
                 renderDashboard();
             } catch (err) {
                 showToast(err.message || 'Kunde inte spara vikt', true);
@@ -482,8 +590,22 @@
             const latest = savedList[0];
             if (latest) {
                 AccountStore.updatePlan(latest.id, (p) => {
-                    p.mealPlanDays = NutritionCore.rebuildMealPlanDays(p, p.calorieTarget);
+                    if (!p.mealPlanDays || !p.mealPlanDays.length) {
+                        p.mealPlanDays = NutritionCore.rebuildMealPlanDays(p, p.calorieTarget);
+                    }
+                    p.versions = p.versions || [];
+                    if (!p.versions.length) {
+                        p.versions.push(NutritionCore.createVersionSnapshot(p, {
+                            label: 'Ursprunglig plan',
+                            reason: 'Första sparade kostschemat'
+                        }));
+                    }
                 });
+                const refreshed = AccountStore.getPlan(latest.id);
+                const version = refreshed.versions[refreshed.versions.length - 1];
+                if (version) {
+                    PlanPdfStore.ensurePdfForVersion(refreshed, version).catch(() => {});
+                }
             }
 
             closeSavePlanModal();

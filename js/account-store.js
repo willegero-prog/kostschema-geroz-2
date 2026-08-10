@@ -174,11 +174,27 @@
                     }
                 ],
                 adjustments: [],
+                versions: [],
                 createdAt: now,
                 updatedAt: now,
                 lastEvaluatedAt: null,
                 lastAdjustedAt: null
             };
+
+            // Ensure meal days exist before first version snapshot
+            if (!plan.mealPlanDays.length && global.NutritionCore) {
+                plan.mealPlanDays = NutritionCore.rebuildMealPlanDays(plan, plan.calorieTarget);
+            }
+            if (global.NutritionCore) {
+                const initial = NutritionCore.createVersionSnapshot(plan, {
+                    label: 'Ursprunglig plan',
+                    reason: 'Första sparade kostschemat',
+                    date: now,
+                    fileName: `${(global.MealPlanPDF ? MealPlanPDF.safeFileName(plan.name) : 'kostplan')}-${now.slice(0, 10)}.pdf`
+                });
+                plan.versions.push(initial);
+            }
+
             user.plans[id] = plan;
             return JSON.parse(JSON.stringify(plan));
         });

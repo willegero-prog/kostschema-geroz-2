@@ -2239,6 +2239,49 @@ body::before {
     color: var(--text-secondary);
 }
 
+.version-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.version-item {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: center;
+    padding: 14px 16px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.05);
+    flex-wrap: wrap;
+}
+
+.version-main {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 200px;
+    flex: 1;
+}
+
+.version-main span {
+    color: var(--text-primary);
+    font-size: 0.92rem;
+}
+
+.version-main small {
+    color: var(--text-secondary);
+}
+
+.version-download-btn {
+    min-width: 160px;
+}
+
+.dash-download-btn {
+    margin: 8px 0 14px;
+}
+
 .text-link-btn {
     background: none;
     border: none;

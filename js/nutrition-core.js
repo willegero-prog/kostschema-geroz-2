@@ -82,10 +82,64 @@
                     name: meal.name,
                     protein: Math.round(dayProtein * meal.distribution),
                     carbs: Math.round(dayCarbs * meal.distribution),
-                    fat: Math.round(dayFat * meal.distribution)
+                    fat: Math.round(dayFat * meal.distribution),
+                    calories: Math.round(dayCalories * meal.distribution)
                 }))
             };
         });
+    }
+
+    function toPdfPlan(savedPlan, version = null) {
+        const source = version || savedPlan;
+        const days = (source.mealPlanDays || savedPlan.mealPlanDays || []).map((day) => ({
+            name: day.name,
+            isTrainingDay: !!day.isTrainingDay,
+            calories: day.calories,
+            meals: (day.meals || []).map((meal) => ({
+                name: meal.name,
+                protein: meal.protein,
+                carbs: meal.carbs,
+                fat: meal.fat,
+                calories: meal.calories != null
+                    ? meal.calories
+                    : Math.round((meal.protein * 4) + (meal.carbs * 4) + (meal.fat * 9))
+            }))
+        }));
+
+        return {
+            planName: savedPlan.name,
+            versionDate: source.date || source.createdAt || savedPlan.updatedAt,
+            userInfo: {
+                gender: savedPlan.gender,
+                age: savedPlan.age,
+                height: savedPlan.height,
+                weight: source.weight != null ? source.weight : savedPlan.currentWeight,
+                bmr: source.bmr != null ? source.bmr : savedPlan.bmr,
+                tdee: source.tdee != null ? source.tdee : savedPlan.tdee,
+                goal: savedPlan.goal,
+                calorieAdjustment: savedPlan.goal === 'maintain'
+                    ? 'Behålla'
+                    : (savedPlan.calorieAdjustment ?? 0)
+            },
+            days
+        };
+    }
+
+    function createVersionSnapshot(plan, meta = {}) {
+        return {
+            id: `ver_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`,
+            createdAt: new Date().toISOString(),
+            date: (meta.date || new Date().toISOString()).slice(0, 10),
+            label: meta.label || 'Kostschema',
+            reason: meta.reason || '',
+            weight: plan.currentWeight,
+            bmr: plan.bmr,
+            tdee: plan.tdee,
+            calorieTarget: plan.calorieTarget,
+            macros: JSON.parse(JSON.stringify(plan.macros || {})),
+            mealPlanDays: JSON.parse(JSON.stringify(plan.mealPlanDays || [])),
+            fileName: meta.fileName || null
+        };
     }
 
     global.NutritionCore = {
@@ -95,6 +149,8 @@
         calculateTDEE,
         calorieTargetFrom,
         macrosForCalories,
-        rebuildMealPlanDays
+        rebuildMealPlanDays,
+        toPdfPlan,
+        createVersionSnapshot
     };
 })(window);

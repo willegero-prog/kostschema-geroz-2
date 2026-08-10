@@ -250,12 +250,24 @@
         if (!evaluation || !evaluation.shouldAdjust) return { adjusted: false, plan, evaluation };
 
         const Nutrition = global.NutritionCore;
+        plan.versions = plan.versions || [];
+
+        // Keep a snapshot of the plan BEFORE this update if versions are missing
+        if (!plan.versions.length) {
+            plan.versions.push(Nutrition.createVersionSnapshot(plan, {
+                label: 'Plan före uppdatering',
+                reason: 'Sparad innan automatisk justering',
+                date: plan.updatedAt || new Date().toISOString()
+            }));
+        }
+
         const previous = {
             currentWeight: plan.currentWeight,
             bmr: plan.bmr,
             tdee: plan.tdee,
             calorieTarget: plan.calorieTarget,
-            macros: { ...plan.macros }
+            macros: { ...plan.macros },
+            mealPlanDays: JSON.parse(JSON.stringify(plan.mealPlanDays || []))
         };
 
         const newWeight = evaluation.proposedWeight;
@@ -274,11 +286,19 @@
         plan.lastAdjustedAt = new Date().toISOString();
         plan.lastEvaluatedAt = plan.lastAdjustedAt;
 
+        const newVersion = Nutrition.createVersionSnapshot(plan, {
+            label: 'Uppdaterad efter vikttrend',
+            reason: evaluation.reason,
+            date: plan.lastAdjustedAt
+        });
+        plan.versions.push(newVersion);
+
         const adjustment = {
             id: `adj_${Date.now().toString(36)}`,
             date: plan.lastAdjustedAt.slice(0, 10),
             createdAt: plan.lastAdjustedAt,
             reason: evaluation.reason,
+            versionId: newVersion.id,
             previousWeightAverage: evaluation.olderWeek ? evaluation.olderWeek.average : previous.currentWeight,
             newWeightAverage: evaluation.newerWeek ? evaluation.newerWeek.average : newWeight,
             previous: {
@@ -297,7 +317,7 @@
         plan.adjustments = plan.adjustments || [];
         plan.adjustments.push(adjustment);
 
-        return { adjusted: true, plan, adjustment, evaluation };
+        return { adjusted: true, plan, adjustment, evaluation, version: newVersion };
     }
 
     function evaluateAndMaybeAdjust(plan) {
