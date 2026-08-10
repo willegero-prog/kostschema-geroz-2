@@ -573,6 +573,8 @@ function generateMealPlan() {
     const trainingDayMultiplier = 1.1;
     const restDayMultiplier = 0.95;
 
+    const dailyCalorieTarget = Math.round(baseCalories);
+
     const mealPlan = {
         userInfo: {
             gender: state.gender,
@@ -584,6 +586,7 @@ function generateMealPlan() {
             goal: state.goal,
             calorieAdjustment: state.goal === 'maintain' ? 'Behålla' : state.calorieAdjustment
         },
+        dailyCalorieTarget,
         macros: macros,
         days: [],
         calorieRating
@@ -755,8 +758,9 @@ function displayMealPlan(plan) {
                     <span class="info-explanation">Total Daily Energy Expenditure - totala kalorier förbrända per dag</span>
                 </div>
                 <div class="info-item">
-                    <span class="info-label">Dagligt Mål</span>
-                    <span class="info-value">${plan.userInfo.calorieAdjustment === 'Behålla' ? 'Behålla' : plan.userInfo.calorieAdjustment + ' kcal ' + (plan.userInfo.goal === 'bulk' ? 'överskott' : 'underskott')}</span>
+                    <span class="info-label">Dagligt kalorimål</span>
+                    <span class="info-value">${plan.dailyCalorieTarget || '–'} kcal</span>
+                    <span class="info-explanation">${plan.userInfo.calorieAdjustment === 'Behålla' ? 'Baserat på TDEE (underhåll)' : `${plan.userInfo.calorieAdjustment} kcal ${plan.userInfo.goal === 'bulk' ? 'överskott' : 'underskott'} ovanpå TDEE`}</span>
                 </div>
             </div>
             <div class="calorie-rating rating-${plan.calorieRating.level}">

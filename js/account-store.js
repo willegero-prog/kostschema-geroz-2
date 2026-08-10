@@ -116,7 +116,15 @@
     function listPlans() {
         const user = requireUser();
         const store = loadStore();
-        const plans = Object.values(store.users[user.email].plans || {});
+        const userRecord = store.users[user.email];
+        let dirty = false;
+        const plans = Object.values(userRecord.plans || {}).map((p) => {
+            const before = p.calorieTarget;
+            if (global.NutritionCore) NutritionCore.repairPlanCalories(p);
+            if (p.calorieTarget !== before) dirty = true;
+            return p;
+        });
+        if (dirty) saveStore(store);
         return plans
             .map((p) => ({
                 id: p.id,
@@ -138,6 +146,9 @@
         const store = loadStore();
         const plan = store.users[user.email].plans[planId];
         if (!plan) throw new Error('Kostschemat hittades inte');
+        const before = plan.calorieTarget;
+        if (global.NutritionCore) NutritionCore.repairPlanCalories(plan);
+        if (plan.calorieTarget !== before) saveStore(store);
         return JSON.parse(JSON.stringify(plan));
     }
 
@@ -181,11 +192,11 @@
                 lastAdjustedAt: null
             };
 
-            // Ensure meal days exist before first version snapshot
-            if (!plan.mealPlanDays.length && global.NutritionCore) {
-                plan.mealPlanDays = NutritionCore.rebuildMealPlanDays(plan, plan.calorieTarget);
-            }
             if (global.NutritionCore) {
+                NutritionCore.repairPlanCalories(plan);
+                if (!plan.mealPlanDays.length) {
+                    plan.mealPlanDays = NutritionCore.rebuildMealPlanDays(plan, plan.calorieTarget);
+                }
                 const initial = NutritionCore.createVersionSnapshot(plan, {
                     label: 'Ursprunglig plan',
                     reason: 'Första sparade kostschemat',

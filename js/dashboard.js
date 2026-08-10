@@ -480,7 +480,7 @@
                 <div class="dash-hero-card accent">
                     <span class="dash-hero-label">Dagens kalorimål</span>
                     <span class="dash-hero-value">${calorieTarget} kcal</span>
-                    <span class="dash-hero-sub">Från ditt kostschema. Ändras först när tillräcklig vikttrend finns (ca 2–3 veckor).</span>
+                    <span class="dash-hero-sub">Hela dagens kaloriintag från generatorn (TDEE ± överskott/underskott). Ändras först när tillräcklig vikttrend finns.</span>
                 </div>
                 <div class="dash-hero-card">
                     <span class="dash-hero-label">Vikttrend</span>
@@ -722,11 +722,55 @@ br>
             const name = ($('save-plan-name')?.value || '').trim();
             if (!name) throw new Error('Ange ett namn för kostschemat');
             const st = global.state;
-            const calorieTarget = NutritionCore.calorieTargetFrom(st.tdee, st.goal, st.calorieAdjustment);
+            const mealPlan = st.mealPlan;
+            if (!mealPlan) throw new Error('Skapa ett kostschema först');
+
+            let bmr = Number(st.bmr) || Number(mealPlan.userInfo?.bmr) || 0;
+            let tdee = Number(st.tdee) || Number(mealPlan.userInfo?.tdee) || 0;
+            if ((!tdee || !bmr) && st.age && st.height && st.weight && st.gender) {
+                bmr = NutritionCore.calculateBMR(st.age, st.height, st.weight, st.gender);
+                tdee = NutritionCore.calculateTDEE(bmr, st.activityLevel || 'moderate');
+            }
+
+            const calorieAdjustment = st.goal === 'maintain' ? 0 : (Number(st.calorieAdjustment) || 0);
+            let calorieTarget = Number(mealPlan.dailyCalorieTarget);
+            if (!Number.isFinite(calorieTarget) || calorieTarget <= 0) {
+                calorieTarget = NutritionCore.calorieTargetFrom(tdee, st.goal, calorieAdjustment);
+            }
+            // Never persist only the surplus/deficit (e.g. 500) as the daily target
+            if (calorieAdjustment > 0 && Math.abs(calorieTarget - calorieAdjustment) < 0.5) {
+                calorieTarget = NutritionCore.calorieTargetFrom(tdee, st.goal, calorieAdjustment);
+            }
+            if (!Number.isFinite(calorieTarget) || calorieTarget < 800) {
+                throw new Error('Kunde inte beräkna hela dagens kalorimål. Kontrollera BMR/TDEE i generatorn.');
+            }
+
             const macros = NutritionCore.macrosForCalories(calorieTarget, st.goal);
             const targetWeight = st.targetWeight != null && !Number.isNaN(Number(st.targetWeight))
                 ? Number(st.targetWeight)
                 : (parseFloat($('target-weight')?.value) || null);
+
+            const mealPlanDays = (mealPlan.days || []).length
+                ? mealPlan.days.map((day) => ({
+                    name: day.name,
+                    dayKey: day.dayKey || null,
+                    isTrainingDay: !!day.isTrainingDay,
+                    calories: day.calories,
+                    meals: (day.meals || []).map((meal) => ({
+                        name: meal.name,
+                        protein: meal.protein,
+                        carbs: meal.carbs,
+                        fat: meal.fat,
+                        calories: meal.calories != null
+                            ? meal.calories
+                            : Math.round((meal.protein * 4) + (meal.carbs * 4) + (meal.fat * 9))
+                    }))
+                }))
+                : NutritionCore.rebuildMealPlanDays({
+                    goal: st.goal,
+                    snacks: st.snacks,
+                    trainingDays: st.trainingDays
+                }, calorieTarget);
 
             AccountStore.saveNewPlan({
                 name,
@@ -737,23 +781,21 @@ br>
                 weight: st.weight,
                 targetWeight,
                 activityLevel: st.activityLevel,
-                calorieAdjustment: st.goal === 'maintain' ? 0 : st.calorieAdjustment,
-                bmr: st.bmr,
-                tdee: st.tdee,
+                calorieAdjustment,
+                bmr,
+                tdee,
                 calorieTarget,
                 macros,
                 trainingDays: st.trainingDays,
                 snacks: st.snacks,
-                mealPlanDays: []
+                mealPlanDays
             });
 
             const savedList = AccountStore.listPlans();
             const latest = savedList[0];
             if (latest) {
                 AccountStore.updatePlan(latest.id, (p) => {
-                    if (!p.mealPlanDays || !p.mealPlanDays.length) {
-                        p.mealPlanDays = NutritionCore.rebuildMealPlanDays(p, p.calorieTarget);
-                    }
+                    NutritionCore.repairPlanCalories(p);
                     p.versions = p.versions || [];
                     if (!p.versions.length) {
                         p.versions.push(NutritionCore.createVersionSnapshot(p, {

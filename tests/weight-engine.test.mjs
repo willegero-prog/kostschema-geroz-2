@@ -28,6 +28,31 @@ const { weeklyAverages, evaluateTrend, applyWeightLog, evaluateAndMaybeAdjust } 
 assert.equal(calculateBMR(23, 183, 80, 'male'), 1834);
 assert.equal(calculateBMR(23, 183, 80, 'female'), 1668);
 assert.equal(calorieTargetFrom(2843, 'cut', 400), 2443);
+assert.equal(calorieTargetFrom(2500, 'bulk', 500), 3000);
+
+const brokenBulk = {
+    goal: 'bulk',
+    gender: 'male',
+    age: 23,
+    height: 175,
+    startingWeight: 69,
+    currentWeight: 69,
+    activityLevel: 'moderate',
+    calorieAdjustment: 500,
+    bmr: null,
+    tdee: null,
+    calorieTarget: 500,
+    macros: { proteinG: 31, carbsG: 69, fatG: 11 },
+    trainingDays: ['monday'],
+    snacks: { snack1: false, snack2: false },
+    mealPlanDays: [{ name: 'Måndag', calories: 475, meals: [] }]
+};
+sandbox.NutritionCore.repairPlanCalories(brokenBulk);
+assert.ok(brokenBulk.tdee > 2000, 'TDEE should be recalculated');
+assert.equal(brokenBulk.calorieTarget, brokenBulk.tdee + 500);
+assert.ok(brokenBulk.calorieTarget !== 500);
+assert.ok(brokenBulk.macros.proteinG > 100);
+assert.ok(brokenBulk.mealPlanDays[0].calories > 1000);
 
 const plan = {
     goal: 'cut',

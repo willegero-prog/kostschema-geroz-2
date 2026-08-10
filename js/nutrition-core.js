@@ -28,10 +28,64 @@
     }
 
     function calorieTargetFrom(tdee, goal, calorieAdjustment) {
+        const base = Number(tdee);
         const adj = Number(calorieAdjustment) || 0;
-        if (goal === 'bulk') return Math.round(tdee + adj);
-        if (goal === 'cut') return Math.round(tdee - adj);
-        return Math.round(tdee);
+        if (!Number.isFinite(base) || base <= 0) {
+            throw new Error('TDEE saknas – kan inte beräkna hela dagens kalorimål');
+        }
+        if (goal === 'bulk') return Math.round(base + adj);
+        if (goal === 'cut') return Math.round(base - adj);
+        return Math.round(base);
+    }
+
+    /**
+     * Full daily calorie intake (TDEE ± surplus/deficit), never just the adjustment.
+     * Repairs plans that accidentally stored only the surplus/deficit (e.g. 500).
+     */
+    function repairPlanCalories(plan) {
+        if (!plan) return plan;
+
+        const weight = Number(plan.currentWeight) || Number(plan.startingWeight);
+        let bmr = Number(plan.bmr);
+        let tdee = Number(plan.tdee);
+        const canRecalc = plan.age && plan.height && weight && plan.gender;
+
+        if ((!Number.isFinite(tdee) || tdee <= 0 || !Number.isFinite(bmr) || bmr <= 0) && canRecalc) {
+            bmr = calculateBMR(plan.age, plan.height, weight, plan.gender);
+            tdee = calculateTDEE(bmr, plan.activityLevel || 'moderate');
+            plan.bmr = bmr;
+            plan.tdee = tdee;
+        }
+
+        if (!Number.isFinite(tdee) || tdee <= 0) return plan;
+
+        const adj = plan.goal === 'maintain' ? 0 : (Number(plan.calorieAdjustment) || 0);
+        const expected = calorieTargetFrom(tdee, plan.goal, adj);
+        const current = Number(plan.calorieTarget);
+        const looksLikeAdjustmentOnly = adj > 0 && Number.isFinite(current) && Math.abs(current - adj) < 0.5;
+        const missingOrInvalid = !Number.isFinite(current) || current <= 0;
+        const unrealisticallyLow = Number.isFinite(current) && current < Math.max(800, tdee * 0.45);
+
+        if (!(looksLikeAdjustmentOnly || missingOrInvalid || unrealisticallyLow)) {
+            return plan;
+        }
+
+        plan.calorieTarget = expected;
+        plan.macros = macrosForCalories(expected, plan.goal);
+
+        const days = plan.mealPlanDays || [];
+        const avgDay = days.length
+            ? days.reduce((sum, day) => sum + (Number(day.calories) || 0), 0) / days.length
+            : 0;
+        const daysLookBroken = !days.length
+            || avgDay < Math.max(800, tdee * 0.45)
+            || (adj > 0 && Math.abs(avgDay - adj) < Math.max(50, adj * 0.35));
+
+        if (daysLookBroken) {
+            plan.mealPlanDays = rebuildMealPlanDays(plan, expected);
+        }
+
+        return plan;
     }
 
     function macrosForCalories(calories, goal) {
@@ -148,6 +202,7 @@
         calculateBMR,
         calculateTDEE,
         calorieTargetFrom,
+        repairPlanCalories,
         macrosForCalories,
         rebuildMealPlanDays,
         toPdfPlan,
