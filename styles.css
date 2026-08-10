@@ -1897,7 +1897,298 @@ body::before {
 .saved-plans-list {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 16px;
+}
+
+.saved-plan-card-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.mina-kostscheman-btn {
+    width: 100%;
+    justify-content: center;
+    font-weight: 700;
+}
+
+.dash-header-actions,
+.follow-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+
+.follow-plan-section {
+    padding: 18px;
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    background: linear-gradient(160deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.03) 100%);
+}
+
+.follow-calorie-banner {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 14px;
+    align-items: center;
+    padding: 14px 16px;
+    margin-bottom: 14px;
+    border-radius: 12px;
+    border: 1px solid rgba(0, 122, 255, 0.4);
+    background: rgba(0, 122, 255, 0.14);
+}
+
+.follow-label {
+    display: block;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    margin-bottom: 2px;
+}
+
+.follow-calories {
+    font-size: 1.55rem;
+    font-weight: 800;
+}
+
+.follow-macros {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px 16px;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.follow-days {
+    display: grid;
+    gap: 10px;
+}
+
+.follow-day {
+    padding: 12px 14px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(0, 0, 0, 0.18);
+}
+
+.follow-day-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+    font-size: 0.92rem;
+}
+
+.follow-day-head span {
+    color: var(--text-secondary);
+}
+
+.follow-meals {
+    display: grid;
+    gap: 6px;
+}
+
+.follow-meal {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+    font-size: 0.86rem;
+    padding: 6px 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.follow-meal span:last-child {
+    color: var(--text-secondary);
+}
+
+.pdf-gallery {
+    display: grid;
+    gap: 16px;
+}
+
+.pdf-preview-card {
+    display: grid;
+    grid-template-columns: minmax(180px, 240px) 1fr;
+    gap: 0;
+    overflow: hidden;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.pdf-preview-card.is-current {
+    border-color: rgba(0, 122, 255, 0.55);
+    box-shadow: 0 0 0 1px rgba(0, 122, 255, 0.2);
+}
+
+.pdf-preview-frame-wrap {
+    position: relative;
+    min-height: 260px;
+    background: #ececec;
+    border-right: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.pdf-preview-frame {
+    width: 100%;
+    height: 100%;
+    min-height: 260px;
+    border: 0;
+    display: block;
+    background: #fff;
+}
+
+.pdf-sheet-fallback {
+    padding: 16px;
+    color: #1a1a1a;
+    min-height: 260px;
+    background: linear-gradient(180deg, #fff 0%, #f3f3f3 100%);
+}
+
+.pdf-sheet-bar {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #007aff;
+    margin-bottom: 8px;
+}
+
+.pdf-sheet-title {
+    font-size: 1.05rem;
+    font-weight: 800;
+    margin-bottom: 6px;
+}
+
+.pdf-sheet-meta,
+.pdf-sheet-row,
+.pdf-sheet-days {
+    font-size: 0.82rem;
+    line-height: 1.4;
+    margin-bottom: 4px;
+}
+
+.pdf-sheet-days {
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.pdf-preview-info {
+    padding: 16px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.pdf-preview-info strong {
+    font-size: 1.05rem;
+}
+
+.pdf-preview-info span,
+.pdf-preview-info small {
+    color: var(--text-secondary);
+    font-size: 0.88rem;
+}
+
+.pdf-current-badge {
+    align-self: flex-start;
+    font-size: 0.72rem !important;
+    font-weight: 700;
+    color: #93c5fd !important;
+    border: 1px solid rgba(147, 197, 253, 0.45);
+    background: rgba(0, 122, 255, 0.16);
+    border-radius: 999px;
+    padding: 3px 10px;
+}
+
+.pdf-preview-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.weight-chart-wrap {
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.weight-chart-y-label {
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.weight-chart-main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.weight-chart {
+    width: 100%;
+    height: auto;
+    display: block;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(0, 0, 0, 0.22);
+}
+
+.weight-chart-x-label {
+    text-align: center;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+}
+
+.chart-axis {
+    stroke: rgba(255, 255, 255, 0.55);
+    stroke-width: 1.5;
+}
+
+.chart-grid {
+    stroke: rgba(255, 255, 255, 0.12);
+    stroke-width: 1;
+}
+
+.chart-grid-soft {
+    stroke: rgba(255, 255, 255, 0.06);
+    stroke-width: 1;
+}
+
+.chart-tick {
+    fill: rgba(255, 255, 255, 0.85);
+    font-size: 10px;
+}
+
+.chart-dot {
+    fill: #4da3ff;
+    stroke: #fff;
+    stroke-width: 1.2;
+}
+
+.chart-range-note,
+.weight-chart-empty .dashboard-empty {
+    margin-top: 8px;
+}
+
+.chart-range-note {
+    color: var(--text-secondary);
+    font-size: 0.82rem;
 }
 
 .saved-plan-card {
@@ -2309,6 +2600,21 @@ body::before {
     .dash-simple-grid,
     .saved-plan-highlights {
         grid-template-columns: 1fr;
+    }
+
+    .pdf-preview-card {
+        grid-template-columns: 1fr;
+    }
+
+    .pdf-preview-frame-wrap,
+    .pdf-preview-frame,
+    .pdf-sheet-fallback {
+        min-height: 220px;
+    }
+
+    .pdf-preview-frame-wrap {
+        border-right: 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     }
 
     .auth-bar {

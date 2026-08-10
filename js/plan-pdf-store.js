@@ -60,6 +60,15 @@
         return true;
     }
 
+    async function openStoredPdf(id) {
+        const record = await getPdf(id);
+        if (!record || !record.blob) return false;
+        const url = URL.createObjectURL(record.blob);
+        window.open(url, '_blank', 'noopener');
+        setTimeout(() => URL.revokeObjectURL(url), 60_000);
+        return true;
+    }
+
     async function ensurePdfForVersion(savedPlan, version) {
         const pdfId = `${savedPlan.id}:${version.id}`;
         const existing = await getPdf(pdfId);
@@ -85,6 +94,7 @@
         savePdf,
         getPdf,
         downloadStoredPdf,
+        openStoredPdf,
         ensurePdfForVersion
     };
 })(window);

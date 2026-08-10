@@ -3,6 +3,7 @@
  */
 (function (global) {
     let activePlanId = null;
+    let dashboardScreen = 'home'; // home | plan | pdfs
 
     function $(id) {
         return document.getElementById(id);
@@ -24,6 +25,13 @@
         const d = String(value).slice(0, 10);
         const [y, m, day] = d.split('-');
         return `${day}/${m}/${y}`;
+    }
+
+    function formatShortDate(value) {
+        if (!value) return '';
+        const d = String(value).slice(0, 10);
+        const [, m, day] = d.split('-');
+        return `${day}/${m}`;
     }
 
     function showToast(message, isError) {
@@ -81,8 +89,7 @@
     }
 
     function closeAuthModal() {
-        const modal = $('auth-modal');
-        if (modal) modal.classList.remove('active');
+        $('auth-modal')?.classList.remove('active');
     }
 
     function setAuthMode(mode) {
@@ -111,6 +118,8 @@
             closeAuthModal();
             refreshAuthUi();
             showToast(modalMode === 'login' ? 'Inloggad' : 'Konto skapat');
+            dashboardScreen = 'home';
+            activePlanId = null;
             renderDashboard();
         } catch (err) {
             showToast(err.message || 'Något gick fel', true);
@@ -126,75 +135,15 @@
         const wizard = $('wizard-view');
         if (view) view.style.display = 'block';
         if (wizard) wizard.style.display = 'none';
+        if (!activePlanId) dashboardScreen = 'home';
         renderDashboard();
     }
 
     function closeDashboard() {
-        const view = $('dashboard-view');
-        const wizard = $('wizard-view');
-        if (view) view.style.display = 'none';
-        if (wizard) wizard.style.display = 'block';
+        $('dashboard-view') && ($('dashboard-view').style.display = 'none');
+        $('wizard-view') && ($('wizard-view').style.display = 'block');
         activePlanId = null;
-    }
-
-    function renderDashboard() {
-        const root = $('dashboard-content');
-        if (!root || !AccountStore.currentUser()) return;
-
-        if (activePlanId) {
-            try {
-                renderPlanDetail(root, AccountStore.getPlan(activePlanId));
-            } catch (err) {
-                activePlanId = null;
-                showToast(err.message, true);
-                renderDashboard();
-            }
-            return;
-        }
-
-        const plans = AccountStore.listPlans();
-        root.innerHTML = `
-            <div class="dashboard-header-row">
-                <div>
-                    <h2>Min dashboard</h2>
-                    <p class="dashboard-subtitle">Här hittar du dina sparade kostscheman</p>
-                </div>
-                <button type="button" class="nav-btn" id="dashboard-back-wizard">Tillbaka till generatorn</button>
-            </div>
-            <div class="dashboard-section">
-                <h3>Mina kostscheman</h3>
-                ${plans.length === 0 ? `
-                    <div class="dash-empty-card">
-                        <p class="dashboard-empty">Du har inga sparade kostscheman ännu.</p>
-                        <p class="dashboard-empty">Skapa ett i generatorn och klicka på <strong>Spara kostschema</strong>.</p>
-                    </div>
-                ` : `
-                    <div class="saved-plans-list">
-                        ${plans.map((p) => `
-                            <button type="button" class="saved-plan-card" data-plan-id="${p.id}">
-                                <div class="saved-plan-top">
-                                    <span class="saved-plan-name">${escapeHtml(p.name)}</span>
-                                    <span class="goal-pill goal-${escapeHtml(p.goal)}">${goalLabel(p.goal)}</span>
-                                </div>
-                                <div class="saved-plan-highlights">
-                                    <span><strong>${formatKg(p.currentWeight)}</strong><small>nuvarande vikt</small></span>
-                                    <span><strong>${p.calorieTarget} kcal</strong><small>dagligt mål</small></span>
-                                </div>
-                                <span class="saved-plan-updated">Senast uppdaterad ${formatDate(p.updatedAt)} · Öppna →</span>
-                            </button>
-                        `).join('')}
-                    </div>
-                `}
-            </div>
-        `;
-
-        $('dashboard-back-wizard')?.addEventListener('click', closeDashboard);
-        root.querySelectorAll('.saved-plan-card').forEach((btn) => {
-            btn.addEventListener('click', () => {
-                activePlanId = btn.dataset.planId;
-                renderDashboard();
-            });
-        });
+        dashboardScreen = 'home';
     }
 
     function escapeHtml(str) {
@@ -211,28 +160,289 @@
         return 'Stabil';
     }
 
-    function renderSparkline(logs) {
+    function sortedVersionsOldestFirst(plan) {
+        return [...(plan.versions || [])].sort((a, b) => {
+            const da = String(a.createdAt || a.date || '');
+            const db = String(b.createdAt || b.date || '');
+            return da.localeCompare(db);
+        });
+    }
+
+    function renderWeightChart(logs) {
         const sorted = WeightEngine.sortLogs(logs).slice(-28);
         if (sorted.length < 2) {
-            return '<p class="dashboard-empty">Logga vikt några dagar för att se en enkel trendgraf.</p>';
+            return `
+                <div class="weight-chart-empty">
+                    <p class="dashboard-empty">Logga vikt minst två dagar för att se grafen.</p>
+                    <p class="dashboard-empty">När data finns visas <strong>Datum</strong> längs botten och <strong>Vikt (kg)</strong> längs sidan.</p>
+                </div>
+            `;
         }
+
         const weights = sorted.map((l) => l.weight);
-        const min = Math.min(...weights);
-        const max = Math.max(...weights);
-        const span = Math.max(max - min, 0.5);
-        const w = 320;
-        const h = 90;
+        const minW = Math.min(...weights);
+        const maxW = Math.max(...weights);
+        const pad = Math.max(0.5, (maxW - minW) * 0.15 || 0.5);
+        const yMin = Math.floor((minW - pad) * 10) / 10;
+        const yMax = Math.ceil((maxW + pad) * 10) / 10;
+        const ySpan = Math.max(yMax - yMin, 0.5);
+
+        const width = 560;
+        const height = 280;
+        const margin = { top: 20, right: 20, bottom: 52, left: 58 };
+        const plotW = width - margin.left - margin.right;
+        const plotH = height - margin.top - margin.bottom;
+
         const points = sorted.map((l, i) => {
-            const x = (i / (sorted.length - 1)) * (w - 10) + 5;
-            const y = h - 10 - ((l.weight - min) / span) * (h - 20);
-            return `${x},${y}`;
-        }).join(' ');
+            const x = margin.left + (sorted.length === 1 ? plotW / 2 : (i / (sorted.length - 1)) * plotW);
+            const y = margin.top + plotH - ((l.weight - yMin) / ySpan) * plotH;
+            return { x, y, log: l };
+        });
+
+        const polyline = points.map((p) => `${p.x},${p.y}`).join(' ');
+        const yTicks = 4;
+        let yTickEls = '';
+        for (let i = 0; i <= yTicks; i++) {
+            const value = yMin + (ySpan * i) / yTicks;
+            const y = margin.top + plotH - (i / yTicks) * plotH;
+            yTickEls += `
+                <line x1="${margin.left}" y1="${y}" x2="${width - margin.right}" y2="${y}" class="chart-grid" />
+                <text x="${margin.left - 8}" y="${y + 4}" text-anchor="end" class="chart-tick">${value.toFixed(1)}</text>
+            `;
+        }
+
+        const maxXLabels = Math.min(6, sorted.length);
+        const xStep = Math.max(1, Math.ceil((sorted.length - 1) / Math.max(maxXLabels - 1, 1)));
+        const xTickEls = points.map((p, i) => {
+            if (i !== 0 && i !== points.length - 1 && i % xStep !== 0) return '';
+            return `
+                <line x1="${p.x}" y1="${margin.top}" x2="${p.x}" y2="${margin.top + plotH}" class="chart-grid-soft" />
+                <text x="${p.x}" y="${height - 28}" text-anchor="middle" class="chart-tick">${formatShortDate(p.log.date)}</text>
+            `;
+        }).join('');
+
+        const dots = points.map((p) => `
+            <circle cx="${p.x}" cy="${p.y}" r="4" class="chart-dot">
+                <title>${formatDate(p.log.date)}: ${p.log.weight} kg</title>
+            </circle>
+        `).join('');
+
         return `
-            <svg class="weight-sparkline" viewBox="0 0 ${w} ${h}" role="img" aria-label="Vikttrend">
-                <polyline fill="none" stroke="rgba(0,122,255,0.9)" stroke-width="2.5" points="${points}"></polyline>
-            </svg>
-            <div class="sparkline-scale"><span>Lägst ${formatKg(min)}</span><span>Högst ${formatKg(max)}</span></div>
+            <div class="weight-chart-wrap">
+                <span class="weight-chart-y-label">Vikt (kg)</span>
+                <div class="weight-chart-main">
+                    <svg class="weight-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="Vikt i kilogram över tid och datum">
+                        ${yTickEls}
+                        ${xTickEls}
+                        <line x1="${margin.left}" y1="${margin.top}" x2="${margin.left}" y2="${margin.top + plotH}" class="chart-axis" />
+                        <line x1="${margin.left}" y1="${margin.top + plotH}" x2="${width - margin.right}" y2="${margin.top + plotH}" class="chart-axis" />
+                        <polyline fill="none" stroke="rgba(0,122,255,0.95)" stroke-width="2.5" points="${polyline}"></polyline>
+                        ${dots}
+                    </svg>
+                    <span class="weight-chart-x-label">Tid / datum</span>
+                </div>
+            </div>
+            <p class="chart-range-note">${sorted.length} mätvärden · varje punkt är ett vägningstillfälle</p>
         `;
+    }
+
+    function buildPdfPreviewCard(plan, version, isCurrent) {
+        const days = (version.mealPlanDays || []).slice(0, 3);
+        return `
+            <article class="pdf-preview-card ${isCurrent ? 'is-current' : ''}" data-version-id="${version.id}">
+                <div class="pdf-preview-frame-wrap">
+                    <div class="pdf-sheet-fallback" data-fallback-for="${version.id}">
+                        <div class="pdf-sheet-bar">Kostschema</div>
+                        <div class="pdf-sheet-title">${escapeHtml(plan.name)}</div>
+                        <div class="pdf-sheet-meta">${formatDate(version.date)} · ${version.calorieTarget} kcal</div>
+                        <div class="pdf-sheet-row">Vikt ${formatKg(version.weight)}</div>
+                        <div class="pdf-sheet-row">Protein ${version.macros?.proteinG ?? '–'}g · Kolh ${version.macros?.carbsG ?? '–'}g · Fett ${version.macros?.fatG ?? '–'}g</div>
+                        <div class="pdf-sheet-days">
+                            ${days.map((d) => `<div>${escapeHtml(d.name)} · ${d.calories} kcal</div>`).join('') || '<div>Kostschema</div>'}
+                        </div>
+                    </div>
+                    <iframe class="pdf-preview-frame" title="Förhandsvisning ${escapeHtml(version.label || 'kostschema')}" data-version-id="${version.id}" hidden></iframe>
+                </div>
+                <div class="pdf-preview-info">
+                    ${isCurrent ? '<span class="pdf-current-badge">Nuvarande</span>' : ''}
+                    <strong>${escapeHtml(version.label || 'Kostschema')}</strong>
+                    <span>${formatDate(version.date)} · ${version.calorieTarget} kcal · ${formatKg(version.weight)}</span>
+                    <small>${escapeHtml(version.reason || '')}</small>
+                    <div class="pdf-preview-actions">
+                        <button type="button" class="nav-btn primary pdf-open-btn" data-version-id="${version.id}">Öppna PDF</button>
+                        <button type="button" class="nav-btn pdf-download-btn" data-version-id="${version.id}">Ladda ned</button>
+                    </div>
+                </div>
+            </article>
+        `;
+    }
+
+    function wireVersionButtons(root, plan) {
+        async function withVersion(versionId, action) {
+            try {
+                const version = (plan.versions || []).find((v) => v.id === versionId);
+                if (!version) throw new Error('Versionen hittades inte');
+                await PlanPdfStore.ensurePdfForVersion(plan, version);
+                const pdfId = `${plan.id}:${version.id}`;
+                AccountStore.updatePlan(plan.id, (p) => {
+                    const target = (p.versions || []).find((v) => v.id === version.id);
+                    if (target && version.fileName) target.fileName = version.fileName;
+                });
+                await action(pdfId);
+            } catch (err) {
+                showToast(err.message || 'Kunde inte öppna PDF', true);
+            }
+        }
+
+        root.querySelectorAll('.pdf-open-btn').forEach((btn) => {
+            btn.addEventListener('click', () => withVersion(btn.dataset.versionId, async (pdfId) => {
+                const ok = await PlanPdfStore.openStoredPdf(pdfId);
+                if (!ok) throw new Error('PDF saknas');
+                showToast('PDF öppnad');
+            }));
+        });
+        root.querySelectorAll('.pdf-download-btn').forEach((btn) => {
+            btn.addEventListener('click', () => withVersion(btn.dataset.versionId, async (pdfId) => {
+                await PlanPdfStore.downloadStoredPdf(pdfId);
+                showToast('PDF nedladdad');
+            }));
+        });
+    }
+
+    function renderDashboard() {
+        const root = $('dashboard-content');
+        if (!root || !AccountStore.currentUser()) return;
+
+        if (dashboardScreen === 'pdfs' && activePlanId) {
+            try {
+                renderPdfLibrary(root, AccountStore.getPlan(activePlanId));
+            } catch (err) {
+                dashboardScreen = 'home';
+                activePlanId = null;
+                showToast(err.message, true);
+                renderDashboard();
+            }
+            return;
+        }
+
+        if (dashboardScreen === 'plan' && activePlanId) {
+            try {
+                renderPlanDetail(root, AccountStore.getPlan(activePlanId));
+            } catch (err) {
+                dashboardScreen = 'home';
+                activePlanId = null;
+                showToast(err.message, true);
+                renderDashboard();
+            }
+            return;
+        }
+
+        const plans = AccountStore.listPlans();
+        root.innerHTML = `
+            <div class="dashboard-header-row">
+                <div>
+                    <h2>Min dashboard</h2>
+                    <p class="dashboard-subtitle">Välj ett kostschema för att följa det, eller öppna Mina Kostscheman för alla PDF-filer</p>
+                </div>
+                <button type="button" class="nav-btn" id="dashboard-back-wizard">Tillbaka till generatorn</button>
+            </div>
+            <div class="dashboard-section">
+                <h3>Dina sparade planer</h3>
+                ${plans.length === 0 ? `
+                    <div class="dash-empty-card">
+                        <p class="dashboard-empty">Du har inga sparade kostscheman ännu.</p>
+                        <p class="dashboard-empty">Skapa ett i generatorn och klicka på <strong>Spara kostschema</strong>.</p>
+                    </div>
+                ` : `
+                    <div class="saved-plans-list">
+                        ${plans.map((p) => `
+                            <div class="saved-plan-card-wrap">
+                                <button type="button" class="saved-plan-card" data-plan-id="${p.id}">
+                                    <div class="saved-plan-top">
+                                        <span class="saved-plan-name">${escapeHtml(p.name)}</span>
+                                        <span class="goal-pill goal-${escapeHtml(p.goal)}">${goalLabel(p.goal)}</span>
+                                    </div>
+                                    <div class="saved-plan-highlights">
+                                        <span><strong>${formatKg(p.currentWeight)}</strong><small>nuvarande vikt</small></span>
+                                        <span><strong>${p.calorieTarget} kcal</strong><small>dagens kalorimål</small></span>
+                                    </div>
+                                    <span class="saved-plan-updated">Öppna för att följa schemat →</span>
+                                </button>
+                                <button type="button" class="nav-btn primary mina-kostscheman-btn" data-plan-id="${p.id}">Mina Kostscheman</button>
+                            </div>
+                        `).join('')}
+                    </div>
+                `}
+            </div>
+        `;
+
+        $('dashboard-back-wizard')?.addEventListener('click', closeDashboard);
+        root.querySelectorAll('.saved-plan-card').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                activePlanId = btn.dataset.planId;
+                dashboardScreen = 'plan';
+                renderDashboard();
+            });
+        });
+        root.querySelectorAll('.mina-kostscheman-btn').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                activePlanId = btn.dataset.planId;
+                dashboardScreen = 'pdfs';
+                renderDashboard();
+            });
+        });
+    }
+
+    function renderPdfLibrary(root, plan) {
+        const versions = sortedVersionsOldestFirst(plan);
+        const latestId = versions.length ? versions[versions.length - 1].id : null;
+
+        root.innerHTML = `
+            <div class="dashboard-header-row">
+                <div>
+                    <button type="button" class="text-link-btn" id="back-to-plan">← Tillbaka till ${escapeHtml(plan.name)}</button>
+                    <h2>Mina Kostscheman</h2>
+                    <p class="dashboard-subtitle">Alla PDF-versioner för “${escapeHtml(plan.name)}”, från äldsta till nyaste</p>
+                </div>
+                <button type="button" class="nav-btn" id="dashboard-back-home">Alla planer</button>
+            </div>
+            <div class="dashboard-section">
+                ${versions.length === 0 ? `
+                    <p class="dashboard-empty">Inga sparade PDF-filer ännu. Spara eller uppdatera planen för att skapa versioner.</p>
+                ` : `
+                    <div class="pdf-gallery">
+                        ${versions.map((v) => buildPdfPreviewCard(plan, v, v.id === latestId)).join('')}
+                    </div>
+                `}
+            </div>
+        `;
+
+        $('back-to-plan')?.addEventListener('click', () => {
+            dashboardScreen = 'plan';
+            renderDashboard();
+        });
+        $('dashboard-back-home')?.addEventListener('click', () => {
+            dashboardScreen = 'home';
+            activePlanId = null;
+            renderDashboard();
+        });
+        wireVersionButtons(root, plan);
+        versions.forEach(async (v) => {
+            try {
+                const record = await PlanPdfStore.ensurePdfForVersion(plan, v);
+                const frame = root.querySelector(`.pdf-preview-frame[data-version-id="${v.id}"]`);
+                const fallback = root.querySelector(`[data-fallback-for="${v.id}"]`);
+                if (frame && record?.blob) {
+                    const url = URL.createObjectURL(record.blob);
+                    frame.src = `${url}#page=1&view=FitH`;
+                    frame.hidden = false;
+                    if (fallback) fallback.hidden = true;
+                    setTimeout(() => URL.revokeObjectURL(url), 120_000);
+                }
+            } catch (_) {
+                /* keep visual fallback card */
+            }
+        });
     }
 
     function renderPlanDetail(root, plan) {
@@ -242,17 +452,23 @@
         const adjustments = [...(plan.adjustments || [])].reverse();
         const todayLocal = WeightEngine.localToday();
         const changeText = stats.weightChange == null
-            ? '–'
+            ? 'Ingen förändring ännu'
             : `${stats.weightChange > 0 ? '+' : ''}${stats.weightChange} kg sedan start`;
+        const calorieTarget = plan.calorieTarget;
+        const versions = sortedVersionsOldestFirst(plan);
+        const latestVersion = versions.length ? versions[versions.length - 1] : null;
 
         root.innerHTML = `
             <div class="dashboard-header-row">
                 <div>
-                    <button type="button" class="text-link-btn" id="back-to-plans">← Mina kostscheman</button>
+                    <button type="button" class="text-link-btn" id="back-to-plans">← Alla planer</button>
                     <h2>${escapeHtml(plan.name)}</h2>
                     <p class="dashboard-subtitle">Mål: ${goalLabel(plan.goal)} · Skapad ${formatDate(plan.createdAt)}</p>
                 </div>
-                <button type="button" class="nav-btn" id="dashboard-back-wizard">Till generatorn</button>
+                <div class="dash-header-actions">
+                    <button type="button" class="nav-btn primary" id="open-mina-kostscheman">Mina Kostscheman</button>
+                    <button type="button" class="nav-btn" id="dashboard-back-wizard">Till generatorn</button>
+                </div>
             </div>
 
             <div class="dash-hero-cards">
@@ -263,13 +479,51 @@
                 </div>
                 <div class="dash-hero-card accent">
                     <span class="dash-hero-label">Dagens kalorimål</span>
-                    <span class="dash-hero-value">${plan.calorieTarget} kcal</span>
-                    <span class="dash-hero-sub">Uppdateras när vikttrenden är tydlig</span>
+                    <span class="dash-hero-value">${calorieTarget} kcal</span>
+                    <span class="dash-hero-sub">Från ditt kostschema. Ändras först när tillräcklig vikttrend finns (ca 2–3 veckor).</span>
                 </div>
                 <div class="dash-hero-card">
                     <span class="dash-hero-label">Vikttrend</span>
                     <span class="dash-hero-value small">${trendLabel(stats.trend)}</span>
-                    <span class="dash-hero-sub">${changeText} · Veckomedel ${formatKg(stats.weeklyAverage)}</span>
+                    <span class="dash-hero-sub">${changeText}${stats.weeklyAverage != null ? ` · Veckomedel ${formatKg(stats.weeklyAverage)}` : ''}</span>
+                </div>
+            </div>
+
+            <div class="dashboard-section follow-plan-section">
+                <h3>Följ ditt kostschema</h3>
+                <p class="section-help">Använd dessa mål varje dag. Kalorierna är ditt aktuella schema även innan du loggat vikt.</p>
+                <div class="follow-calorie-banner">
+                    <div>
+                        <span class="follow-label">Ät idag</span>
+                        <strong class="follow-calories">${calorieTarget} kcal</strong>
+                    </div>
+                    <div class="follow-macros">
+                        <span>Protein <strong>${plan.macros.proteinG}g</strong></span>
+                        <span>Kolhydrater <strong>${plan.macros.carbsG}g</strong></span>
+                        <span>Fett <strong>${plan.macros.fatG}g</strong></span>
+                    </div>
+                </div>
+                <div class="follow-days">
+                    ${(plan.mealPlanDays || []).map((day) => `
+                        <div class="follow-day">
+                            <div class="follow-day-head">
+                                <strong>${escapeHtml(day.name)}</strong>
+                                <span>${day.calories} kcal · ${day.isTrainingDay ? 'Träning' : 'Vila'}</span>
+                            </div>
+                            <div class="follow-meals">
+                                ${(day.meals || []).map((meal) => `
+                                    <div class="follow-meal">
+                                        <span>${escapeHtml(meal.name)}</span>
+                                        <span>P ${meal.protein}g · K ${meal.carbs}g · F ${meal.fat}g</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `).join('') || '<p class="dashboard-empty">Ingen måltidsfördelning sparad.</p>'}
+                </div>
+                <div class="follow-actions">
+                    <button type="button" class="download-btn" id="dash-download-current-pdf">Ladda ned som PDF</button>
+                    <button type="button" class="nav-btn" id="open-mina-kostscheman-2">Mina Kostscheman</button>
                 </div>
             </div>
 
@@ -290,14 +544,15 @@
                 </div>
                 <div id="weight-outlier-warning" class="weight-outlier-warning" hidden role="alert"></div>
                 <div class="status-banner">
-                    <strong>Status:</strong> ${escapeHtml(evaluation.reason || 'Fortsätt logga vikt regelbundet.')}
+                    <strong>Status:</strong> ${escapeHtml(evaluation.reason || 'Fortsätt logga vikt regelbundet. Kalorimålet ligger kvar tills trenden är tydlig.')}
+br>
                 </div>
             </div>
 
             <div class="dashboard-section">
                 <h3>2. Din viktutveckling</h3>
-                <p class="section-help">Enkel översikt över hur vikten rör sig över tid.</p>
-                ${renderSparkline(plan.weightLogs)}
+                <p class="section-help">Grafen visar vikt över tid: <strong>Datum</strong> längs botten, <strong>Vikt (kg)</strong> längs sidan.</p>
+                ${renderWeightChart(plan.weightLogs)}
                 <div class="weekly-averages">
                     <p class="week-avg-title">Senaste veckomedelvärden</p>
                     ${weeks.slice(-6).map((w) => `
@@ -311,62 +566,9 @@
             </div>
 
             <div class="dashboard-section">
-                <h3>3. Ditt kostschema just nu</h3>
-                <p class="section-help">Detta är vad planen använder efter senaste beräkningen.</p>
-                <div class="dash-simple-grid">
-                    <div class="dash-simple-item"><span>Kalorimål</span><strong>${plan.calorieTarget} kcal</strong></div>
-                    <div class="dash-simple-item"><span>BMR</span><strong>${plan.bmr} kcal</strong></div>
-                    <div class="dash-simple-item"><span>TDEE</span><strong>${plan.tdee} kcal</strong></div>
-                    <div class="dash-simple-item"><span>Protein</span><strong>${plan.macros.proteinG}g</strong></div>
-                    <div class="dash-simple-item"><span>Kolhydrater</span><strong>${plan.macros.carbsG}g</strong></div>
-                    <div class="dash-simple-item"><span>Fett</span><strong>${plan.macros.fatG}g</strong></div>
-                </div>
-                <button type="button" class="download-btn dash-download-btn" id="dash-download-current-pdf">Ladda ned som PDF</button>
-                <details class="dash-details">
-                    <summary>Visa veckans dagar</summary>
-                    <div class="saved-day-list">
-                        ${(plan.mealPlanDays || []).map((day) => `
-                            <div class="day-section compact-day">
-                                <div class="day-header">
-                                    <div>
-                                        <span class="day-name">${day.name}</span>
-                                        <span class="day-calories" style="font-size: 0.9rem; color: var(--text-secondary); margin-left: 10px;">${day.calories} kcal</span>
-                                    </div>
-                                    <span class="day-type ${day.isTrainingDay ? '' : 'rest'}">${day.isTrainingDay ? 'Träning' : 'Vila'}</span>
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                </details>
-            </div>
-
-            <div class="dashboard-section">
-                <h3>4. Sparade PDF-versioner</h3>
-                <p class="section-help">Varje gång planen uppdateras sparas en ny PDF-version så du kan se tidigare kostscheman.</p>
-                ${(!(plan.versions || []).length) ? `
-                    <p class="dashboard-empty">Inga sparade versioner ännu.</p>
-                ` : `
-                    <div class="version-list">
-                        ${[...(plan.versions || [])].reverse().map((v, idx) => `
-                            <div class="version-item">
-                                <div class="version-main">
-                                    <strong>${escapeHtml(v.label || 'Kostschema')}</strong>
-                                    <span>${formatDate(v.date)} · ${v.calorieTarget} kcal · ${formatKg(v.weight)}</span>
-                                    <small>${escapeHtml(v.reason || '')}</small>
-                                </div>
-                                <button type="button" class="nav-btn version-download-btn" data-version-id="${v.id}">
-                                    ${idx === 0 ? 'Ladda ned senaste PDF' : 'Ladda ned PDF'}
-                                </button>
-                            </div>
-                        `).join('')}
-                    </div>
-                `}
-            </div>
-
-            <div class="dashboard-section">
-                <h3>5. När systemet ändrat planen</h3>
+                <h3>3. När systemet ändrat planen</h3>
                 ${adjustments.length === 0 ? `
-                    <p class="dashboard-empty">Inga automatiska justeringar ännu. Fortsätt logga vikt i cirka 2–3 veckor.</p>
+                    <p class="dashboard-empty">Inga automatiska justeringar ännu. Ditt kalorimål (${calorieTarget} kcal) gäller tills tillräcklig data finns.</p>
                 ` : `
                     <div class="adjustment-list">
                         ${adjustments.map((a) => `
@@ -375,7 +577,6 @@
                                 <p>Viktmedel: ${formatKg(a.previousWeightAverage)} → ${formatKg(a.newWeightAverage)}</p>
                                 <p>Nytt kalorimål: ${a.previous.calorieTarget} → <strong>${a.next.calorieTarget} kcal</strong></p>
                                 <small>${escapeHtml(a.reason || '')}</small>
-                                ${a.versionId ? `<button type="button" class="text-link-btn version-download-btn" data-version-id="${a.versionId}">Ladda ned PDF för denna uppdatering</button>` : ''}
                             </div>
                         `).join('')}
                     </div>
@@ -385,68 +586,36 @@
 
         $('back-to-plans')?.addEventListener('click', () => {
             activePlanId = null;
+            dashboardScreen = 'home';
             renderDashboard();
         });
         $('dashboard-back-wizard')?.addEventListener('click', closeDashboard);
-
-        async function downloadVersionPdf(versionId) {
-            try {
-                let version = (plan.versions || []).find((v) => v.id === versionId);
-                if (!version) {
-                    // Fallback: current plan as live version
-                    version = NutritionCore.createVersionSnapshot(plan, {
-                        label: 'Aktuell plan',
-                        reason: 'Nedladdning av aktuell version'
-                    });
-                }
-                const pdfId = `${plan.id}:${version.id}`;
-                const stored = await PlanPdfStore.getPdf(pdfId);
-                if (stored?.blob) {
-                    await PlanPdfStore.downloadStoredPdf(pdfId);
-                    showToast('PDF nedladdad');
-                    return;
-                }
-                const saved = await PlanPdfStore.ensurePdfForVersion(plan, version);
-                // Persist filename onto version if newly created
-                AccountStore.updatePlan(plan.id, (p) => {
-                    p.versions = p.versions || [];
-                    const target = p.versions.find((v) => v.id === version.id);
-                    if (target) target.fileName = saved.fileName || target.fileName;
-                    else p.versions.push(version);
-                });
-                await PlanPdfStore.downloadStoredPdf(pdfId);
-                showToast('PDF nedladdad');
-            } catch (err) {
-                showToast(err.message || 'Kunde inte ladda ned PDF', true);
-            }
-        }
+        const openPdfs = () => {
+            dashboardScreen = 'pdfs';
+            renderDashboard();
+        };
+        $('open-mina-kostscheman')?.addEventListener('click', openPdfs);
+        $('open-mina-kostscheman-2')?.addEventListener('click', openPdfs);
 
         $('dash-download-current-pdf')?.addEventListener('click', async () => {
             try {
-                const live = NutritionCore.createVersionSnapshot(plan, {
-                    label: 'Aktuell plan',
-                    reason: 'Senaste kalorier och makron',
-                    date: plan.updatedAt || new Date().toISOString()
-                });
-                const versions = plan.versions || [];
-                const latest = versions[versions.length - 1];
-                const target = (!latest || latest.calorieTarget !== plan.calorieTarget) ? live : latest;
-
-                AccountStore.updatePlan(plan.id, (p) => {
-                    p.versions = p.versions || [];
-                    if (!p.versions.some((v) => v.id === target.id)) {
-                        // Replace transient live id only when needed
-                        if (target === live) p.versions.push(live);
-                    }
-                });
+                let version = latestVersion;
+                if (!version || version.calorieTarget !== plan.calorieTarget) {
+                    version = NutritionCore.createVersionSnapshot(plan, {
+                        label: 'Aktuell plan',
+                        reason: 'Senaste kalorier och makron från kostschemat',
+                        date: plan.updatedAt || new Date().toISOString()
+                    });
+                    AccountStore.updatePlan(plan.id, (p) => {
+                        p.versions = p.versions || [];
+                        if (!p.versions.some((v) => v.id === version.id)) p.versions.push(version);
+                    });
+                }
                 const refreshed = AccountStore.getPlan(plan.id);
-                const version = refreshed.versions.find((v) => v.id === target.id)
-                    || refreshed.versions[refreshed.versions.length - 1]
-                    || target;
-                await PlanPdfStore.ensurePdfForVersion(refreshed, version);
-                await PlanPdfStore.downloadStoredPdf(`${plan.id}:${version.id}`);
+                const target = refreshed.versions.find((v) => v.id === version.id) || version;
+                await PlanPdfStore.ensurePdfForVersion(refreshed, target);
+                await PlanPdfStore.downloadStoredPdf(`${plan.id}:${target.id}`);
                 showToast('PDF nedladdad');
-                renderDashboard();
             } catch (err) {
                 try {
                     MealPlanPDF.exportMealPlanPdf(NutritionCore.toPdfPlan(plan));
@@ -455,10 +624,6 @@
                     showToast(e2.message || 'Kunde inte ladda ned PDF', true);
                 }
             }
-        });
-
-        root.querySelectorAll('.version-download-btn').forEach((btn) => {
-            btn.addEventListener('click', () => downloadVersionPdf(btn.dataset.versionId));
         });
 
         const weightInput = $('dash-weight-input');
@@ -488,11 +653,9 @@
         dateInput?.addEventListener('change', () => {
             const hint = $('dash-date-hint');
             if (!hint || !dateInput) return;
-            if (dateInput.value === todayLocal) {
-                hint.textContent = `Idag (${formatDate(todayLocal)})`;
-            } else {
-                hint.textContent = `Valt datum: ${formatDate(dateInput.value)}`;
-            }
+            hint.textContent = dateInput.value === todayLocal
+                ? `Idag (${formatDate(todayLocal)})`
+                : `Valt datum: ${formatDate(dateInput.value)}`;
         });
 
         saveBtn?.addEventListener('click', () => {
@@ -520,10 +683,9 @@
                 if (adjustedVersion) {
                     const refreshed = AccountStore.getPlan(plan.id);
                     PlanPdfStore.ensurePdfForVersion(refreshed, adjustedVersion).catch(() => {});
-                    // Also ensure previous latest-1 is stored
-                    const versions = refreshed.versions || [];
-                    if (versions.length >= 2) {
-                        PlanPdfStore.ensurePdfForVersion(refreshed, versions[versions.length - 2]).catch(() => {});
+                    const vers = sortedVersionsOldestFirst(refreshed);
+                    if (vers.length >= 2) {
+                        PlanPdfStore.ensurePdfForVersion(refreshed, vers[vers.length - 2]).catch(() => {});
                     }
                 }
                 renderDashboard();
@@ -560,7 +722,6 @@
             const name = ($('save-plan-name')?.value || '').trim();
             if (!name) throw new Error('Ange ett namn för kostschemat');
             const st = global.state;
-            const plan = st.mealPlan;
             const calorieTarget = NutritionCore.calorieTargetFrom(st.tdee, st.goal, st.calorieAdjustment);
             const macros = NutritionCore.macrosForCalories(calorieTarget, st.goal);
             const targetWeight = st.targetWeight != null && !Number.isNaN(Number(st.targetWeight))
@@ -603,18 +764,14 @@
                 });
                 const refreshed = AccountStore.getPlan(latest.id);
                 const version = refreshed.versions[refreshed.versions.length - 1];
-                if (version) {
-                    PlanPdfStore.ensurePdfForVersion(refreshed, version).catch(() => {});
-                }
+                if (version) PlanPdfStore.ensurePdfForVersion(refreshed, version).catch(() => {});
             }
 
             closeSavePlanModal();
             showToast(`Sparade “${name}”`);
+            activePlanId = latest ? latest.id : null;
+            dashboardScreen = latest ? 'plan' : 'home';
             openDashboard();
-            if (latest) {
-                activePlanId = latest.id;
-                renderDashboard();
-            }
         } catch (err) {
             showToast(err.message || 'Kunde inte spara', true);
         }
@@ -638,8 +795,6 @@
             if (e.target.id === 'auth-modal') closeAuthModal();
         });
 
-        $('save-plan-btn')?.addEventListener('click', openSavePlanModal);
-        // Delegated binding for dynamically injected save button on step 6
         document.addEventListener('click', (e) => {
             if (e.target.closest('#save-plan-btn')) {
                 e.preventDefault();
