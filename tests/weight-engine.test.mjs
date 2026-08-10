@@ -87,4 +87,12 @@ const noisy = {
 });
 assert.equal(evaluateTrend(noisy, '2026-08-04').shouldAdjust, false);
 
+const outlier = sandbox.WeightEngine.detectWeightOutlier(plan, 90);
+assert.equal(outlier.isOutlier, true);
+assert.match(outlier.message, /avvikande/i);
+assert.equal(sandbox.WeightEngine.detectWeightOutlier(plan, plan.currentWeight).isOutlier, false);
+
+const local = sandbox.WeightEngine.localToday();
+assert.match(local, /^\d{4}-\d{2}-\d{2}$/);
+
 console.log('All weight/nutrition tests passed');

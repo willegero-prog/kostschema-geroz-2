@@ -175,8 +175,57 @@
         };
     }
 
+    function localToday() {
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, '0');
+        const d = String(now.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    }
+
+    /**
+     * Flag clearly abnormal daily weigh-ins vs recent baseline.
+     * Threshold: >= 2.0 kg OR >= 3% from reference weight.
+     */
+    function detectWeightOutlier(plan, weight) {
+        const numeric = Number(weight);
+        if (!numeric || numeric < 20 || numeric > 400) {
+            return { isOutlier: false, severity: null, message: null, reference: null, delta: null };
+        }
+
+        const logs = sortLogs(plan.weightLogs || []);
+        const week = latestWeeklyAverage(logs);
+        const reference = week?.average
+            ?? (logs.length ? logs[logs.length - 1].weight : null)
+            ?? plan.currentWeight
+            ?? plan.startingWeight;
+
+        if (reference == null) {
+            return { isOutlier: false, severity: null, message: null, reference: null, delta: null };
+        }
+
+        const delta = Math.round((numeric - reference) * 10) / 10;
+        const absDelta = Math.abs(delta);
+        const pct = absDelta / reference;
+        const isOutlier = absDelta >= 2.0 || pct >= 0.03;
+
+        if (!isOutlier) {
+            return { isOutlier: false, severity: null, message: null, reference, delta };
+        }
+
+        const severity = absDelta >= 4.0 || pct >= 0.06 ? 'high' : 'medium';
+        const direction = delta > 0 ? 'högre' : 'lägre';
+        return {
+            isOutlier: true,
+            severity,
+            reference,
+            delta,
+            message: `Vikten är väldigt avvikande: ${numeric.toFixed(1)} kg är ${absDelta.toFixed(1)} kg ${direction} än din referensvikt (${reference.toFixed(1)} kg). Kontrollera att du skrivit rätt innan du sparar.`
+        };
+    }
+
     function applyWeightLog(plan, weight, dateStr) {
-        const date = toDateOnly(dateStr || new Date().toISOString());
+        const date = toDateOnly(dateStr || localToday());
         const numeric = Number(weight);
         if (!numeric || numeric < 20 || numeric > 400) {
             throw new Error('Ange en giltig vikt');
@@ -263,11 +312,13 @@
     global.WeightEngine = {
         EVAL_MIN_DAYS,
         EVAL_PREFERRED_DAYS,
+        localToday,
         weeklyAverages,
         latestWeeklyAverage,
         weightStats,
         goalProgressCopy,
         evaluateTrend,
+        detectWeightOutlier,
         applyWeightLog,
         adjustPlanFromTrend,
         evaluateAndMaybeAdjust,
