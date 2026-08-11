@@ -182,6 +182,10 @@ function initializeEventListeners() {
         });
     });
 
+    const calorieAdjustmentInput = document.getElementById('calorie-adjustment');
+    calorieAdjustmentInput?.addEventListener('input', updateLowCalorieWarning);
+    calorieAdjustmentInput?.addEventListener('change', updateLowCalorieWarning);
+
     // Day selection
     document.querySelectorAll('.day-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
@@ -310,6 +314,31 @@ function updateCalorieLabel() {
             guidance.style.display = 'none';
         }
     }
+    updateLowCalorieWarning();
+}
+
+function updateLowCalorieWarning() {
+    const warning = document.getElementById('calorie-low-warning');
+    const input = document.getElementById('calorie-adjustment');
+    if (!warning || !input) return;
+
+    const value = parseFloat(input.value);
+    const show = (state.goal === 'bulk' || state.goal === 'cut')
+        && Number.isFinite(value)
+        && value >= 0
+        && value < 300
+        && !input.disabled;
+
+    if (!show) {
+        warning.hidden = true;
+        warning.textContent = '';
+        return;
+    }
+
+    warning.hidden = false;
+    warning.textContent = state.goal === 'bulk'
+        ? 'Att bulka på mindre än 300 kcal i överskott lämnar väldigt lite felmarginal. Det blir mer av en extrem \'lean bulk\' där minsta lilla missräkning i kosten eller en extra promenad gör att du hamnar på underhållsnivå och din bulk blir ineffektiv.'
+        : 'Ett underskott på under 300 kalorier ger kroppen en väldigt liten felmarginal. Det fungerar absolut, men det kräver extrem precision i kaloriräkningen eftersom en extra såsklick eller en missad promenad snabbt raderar ut hela underskottet för dagen.';
 }
 
 function nextStep() {
