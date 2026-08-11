@@ -750,9 +750,11 @@ br>
             }
 
             const macros = NutritionCore.macrosForCalories(calorieTarget, st.goal);
-            const targetWeight = st.targetWeight != null && !Number.isNaN(Number(st.targetWeight))
-                ? Number(st.targetWeight)
-                : (parseFloat($('target-weight')?.value) || null);
+            const targetWeight = st.goal === 'maintain'
+                ? null
+                : (st.targetWeight != null && !Number.isNaN(Number(st.targetWeight))
+                    ? Number(st.targetWeight)
+                    : (parseFloat($('target-weight')?.value) || null));
 
             const mealPlanDays = (mealPlan.days || []).length
                 ? mealPlan.days.map((day) => ({

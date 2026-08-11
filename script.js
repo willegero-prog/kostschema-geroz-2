@@ -271,12 +271,15 @@ function updateCalorieLabel() {
     const bulkGuidance = document.getElementById('bulk-guidance');
     const cutGuidance = document.getElementById('cut-guidance');
     const guidanceTitle = document.getElementById('guidance-title');
+    const targetWeightGroup = document.getElementById('target-weight-group');
+    const targetWeightInput = document.getElementById('target-weight');
     
     if (state.goal === 'bulk') {
         label.textContent = 'Kaloriöverskott (kcal)';
         help.textContent = 'Ange det dagliga kaloriöverskottet du vill uppnå';
         input.disabled = false;
         input.value = '';
+        if (targetWeightGroup) targetWeightGroup.style.display = '';
         if (guidance) {
             guidance.style.display = 'block';
             if (bulkGuidance) bulkGuidance.style.display = 'block';
@@ -288,6 +291,7 @@ function updateCalorieLabel() {
         help.textContent = 'Ange det dagliga kaloriunderskottet du vill uppnå';
         input.disabled = false;
         input.value = '';
+        if (targetWeightGroup) targetWeightGroup.style.display = '';
         if (guidance) {
             guidance.style.display = 'block';
             if (bulkGuidance) bulkGuidance.style.display = 'none';
@@ -299,6 +303,9 @@ function updateCalorieLabel() {
         help.textContent = 'Maintain - kalorier kommer att sättas för att behålla din nuvarande vikt';
         input.disabled = true;
         input.value = '0';
+        if (targetWeightGroup) targetWeightGroup.style.display = 'none';
+        if (targetWeightInput) targetWeightInput.value = '';
+        state.targetWeight = null;
         if (guidance) {
             guidance.style.display = 'none';
         }
@@ -419,7 +426,9 @@ function validateCurrentStep() {
         case 3:
             const calorieInput = document.getElementById('calorie-adjustment').value;
             const targetWeightInput = document.getElementById('target-weight')?.value;
-            state.targetWeight = targetWeightInput ? parseFloat(targetWeightInput) : null;
+            state.targetWeight = state.goal === 'maintain'
+                ? null
+                : (targetWeightInput ? parseFloat(targetWeightInput) : null);
             if (state.goal === 'maintain') {
                 state.calorieAdjustment = 0;
             } else {
