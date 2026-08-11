@@ -483,7 +483,7 @@
                     <span class="dash-hero-sub">${plan.goal === 'cut'
                         ? 'Ändras i takt med att din kroppsvikt minskar.'
                         : plan.goal === 'bulk'
-                            ? 'Ändras i takt med att din kroppsvikt ökar.'
+                            ? 'Ändras i takt med din viktökning för att bibehålla ett kontrollerat kaloriöverskott.'
                             : 'Ändras när din vikttrend visar att kalorimålet behöver justeras.'}</span>
                 </div>
                 <div class="dash-hero-card">
