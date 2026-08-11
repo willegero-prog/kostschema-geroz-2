@@ -120,4 +120,65 @@ assert.equal(sandbox.WeightEngine.detectWeightOutlier(plan, plan.currentWeight).
 const local = sandbox.WeightEngine.localToday();
 assert.match(local, /^\d{4}-\d{2}-\d{2}$/);
 
+// Correction after a mistaken weight that triggered adjustment should recalculate calories
+const bulkPlan = {
+    goal: 'bulk',
+    gender: 'male',
+    age: 23,
+    height: 175,
+    startingWeight: 70,
+    currentWeight: 70,
+    targetWeight: 75,
+    activityLevel: 'moderate',
+    calorieAdjustment: 400,
+    bmr: sandbox.NutritionCore.calculateBMR(23, 175, 70, 'male'),
+    tdee: null,
+    calorieTarget: null,
+    macros: {},
+    trainingDays: ['monday', 'wednesday', 'friday'],
+    snacks: { snack1: false, snack2: false },
+    mealPlanDays: [],
+    weightLogs: [],
+    adjustments: [],
+    versions: [],
+    lastAdjustedAt: null
+};
+bulkPlan.tdee = sandbox.NutritionCore.calculateTDEE(bulkPlan.bmr, 'moderate');
+bulkPlan.calorieTarget = calorieTargetFrom(bulkPlan.tdee, 'bulk', 400);
+bulkPlan.macros = sandbox.NutritionCore.macrosForCalories(bulkPlan.calorieTarget, 'bulk');
+const originalCalories = bulkPlan.calorieTarget;
+
+const bulkStart = new Date('2026-07-01');
+for (let i = 0; i < 20; i++) {
+    const d = new Date(bulkStart);
+    d.setUTCDate(bulkStart.getUTCDate() + i);
+    const date = d.toISOString().slice(0, 10);
+    // Slow legitimate gain, then a bad spike on last day
+    const weightKg = i < 19
+        ? Math.round((70 + i * 0.02) * 10) / 10
+        : 78;
+    applyWeightLog(bulkPlan, weightKg, date);
+}
+
+const spiked = evaluateAndMaybeAdjust(bulkPlan);
+assert.equal(spiked.adjusted, true, spiked.evaluation?.reason || 'expected spike adjustment');
+assert.ok(spiked.plan.calorieTarget > originalCalories);
+
+const correctionDate = '2026-07-20';
+const overwrite = applyWeightLog(bulkPlan, 70.4, correctionDate);
+assert.equal(overwrite.wasOverwrite, true);
+assert.equal(overwrite.weightChanged, true);
+
+const reconciled = evaluateAndMaybeAdjust(bulkPlan, { reconcile: true, today: correctionDate });
+assert.equal(reconciled.reconciled, true);
+assert.ok(
+    reconciled.plan.calorieTarget <= spiked.adjustment.next.calorieTarget,
+    'corrected weight should lower or restore calories vs spiked adjustment'
+);
+assert.ok(
+    Math.abs(reconciled.plan.calorieTarget - originalCalories) < 120
+        || reconciled.evaluation?.shouldAdjust === true,
+    'calories should return near baseline or follow the true milder trend'
+);
+
 console.log('All weight/nutrition tests passed');

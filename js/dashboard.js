@@ -674,16 +674,26 @@
                     return;
                 }
                 let adjustedVersion = null;
+                let toastMsg = 'Dagens vikt sparad';
                 AccountStore.updatePlan(plan.id, (p) => {
-                    WeightEngine.applyWeightLog(p, weight, date);
-                    const result = WeightEngine.evaluateAndMaybeAdjust(p);
+                    const logResult = WeightEngine.applyWeightLog(p, weight, date);
+                    const shouldReconcile = logResult.wasOverwrite && logResult.weightChanged;
+                    const result = WeightEngine.evaluateAndMaybeAdjust(p, {
+                        reconcile: shouldReconcile,
+                        reason: shouldReconcile
+                            ? 'Korrigerad viktlogg — kalorimålet räknades om utifrån uppdaterad vikttrend.'
+                            : undefined
+                    });
                     if (result.adjusted) {
                         adjustedVersion = result.version || null;
-                        showToast(`Kostschemat uppdaterades till ${result.adjustment.next.calorieTarget} kcal`);
+                        toastMsg = result.reconciled
+                            ? `Kalorimålet omräknat till ${result.adjustment.next.calorieTarget} kcal`
+                            : `Kostschemat uppdaterades till ${result.adjustment.next.calorieTarget} kcal`;
                     } else {
-                        showToast('Dagens vikt sparad');
+                        toastMsg = shouldReconcile ? 'Vikt korrigerad' : 'Dagens vikt sparad';
                     }
                 });
+                showToast(toastMsg);
                 if (adjustedVersion) {
                     const refreshed = AccountStore.getPlan(plan.id);
                     PlanPdfStore.ensurePdfForVersion(refreshed, adjustedVersion).catch(() => {});
