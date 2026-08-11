@@ -721,9 +721,20 @@
         }
         $('save-plan-modal')?.classList.add('active');
         const input = $('save-plan-name');
-        if (input && !input.value) {
+        if (input) {
             const goal = global.state.goal;
-            input.value = goal === 'cut' ? 'Min deff' : goal === 'bulk' ? 'Bulk 2026' : 'Mitt underhåll';
+            const userName = (AccountStore.currentUser()?.name || '').trim();
+            let suggested = 'Min bulk';
+            if (goal === 'cut') suggested = 'Min deff';
+            else if (goal === 'maintain') {
+                suggested = userName
+                    ? `Maintain ${userName}`
+                    : 'Maintain + ditt namn';
+            } else if (goal === 'bulk') {
+                suggested = 'Min bulk';
+            }
+            input.value = suggested;
+            input.placeholder = suggested;
         }
     }
 
