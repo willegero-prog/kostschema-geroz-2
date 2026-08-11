@@ -833,7 +833,10 @@ function displayMealPlan(plan) {
             </div>
             <div class="plan-actions">
                 <button type="button" id="download-pdf" class="download-btn">Ladda ned som PDF</button>
-                <button type="button" id="save-plan-btn" class="save-plan-btn">Spara kostschema</button>
+                <button type="button" id="save-plan-btn" class="save-plan-btn">
+                    <span class="save-plan-btn-title">Spara kostschema</span>
+                    <span class="save-plan-btn-sub">Håll din kostplan uppdaterad och följ dina resultat</span>
+                </button>
                 <button type="button" id="restart-btn-top" class="restart-btn">Börja om</button>
             </div>
         </div>
