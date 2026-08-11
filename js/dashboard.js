@@ -174,7 +174,6 @@
             return `
                 <div class="weight-chart-empty">
                     <p class="dashboard-empty">Logga vikt minst två dagar för att se grafen.</p>
-                    <p class="dashboard-empty">När data finns visas <strong>Datum</strong> längs botten och <strong>Vikt (kg)</strong> längs sidan.</p>
                 </div>
             `;
         }
@@ -533,7 +532,7 @@
 
             <div class="dashboard-section">
                 <h3>1. Logga dagens vikt</h3>
-                <p class="section-help">Skriv in morgonvikten. Datumet är redan satt till idag.</p>
+                <p class="section-help">Skriv in morgonvikten.</p>
                 <div class="weight-log-form">
                     <div class="form-group">
                         <label for="dash-weight-input">Dagens vikt (kg)</label>
@@ -542,20 +541,17 @@
                     <div class="form-group">
                         <label for="dash-weight-date">Datum</label>
                         <input type="date" id="dash-weight-date" value="${todayLocal}">
-                        <small id="dash-date-hint">Idag (${formatDate(todayLocal)})</small>
                     </div>
                     <button type="button" class="nav-btn primary" id="dash-log-weight">Spara dagens vikt</button>
                 </div>
                 <div id="weight-outlier-warning" class="weight-outlier-warning" hidden role="alert"></div>
                 <div class="status-banner">
                     <strong>Status:</strong> ${escapeHtml(evaluation.reason || 'Fortsätt logga vikt regelbundet. Kalorimålet ligger kvar tills trenden är tydlig.')}
-br>
                 </div>
             </div>
 
             <div class="dashboard-section">
                 <h3>2. Din viktutveckling</h3>
-                <p class="section-help">Grafen visar vikt över tid: <strong>Datum</strong> längs botten, <strong>Vikt (kg)</strong> längs sidan.</p>
                 ${renderWeightChart(plan.weightLogs)}
                 <div class="weekly-averages">
                     <p class="week-avg-title">Senaste veckomedelvärden</p>
@@ -566,26 +562,23 @@ br>
                         </div>
                     `).join('') || '<p class="dashboard-empty">Inga veckomedel ännu — logga vikt några dagar först.</p>'}
                 </div>
-                <p class="plan-explainer">${escapeHtml(WeightEngine.goalProgressCopy(plan))}</p>
             </div>
 
+            ${adjustments.length === 0 ? '' : `
             <div class="dashboard-section">
                 <h3>3. När systemet ändrat planen</h3>
-                ${adjustments.length === 0 ? `
-                    <p class="dashboard-empty">Inga automatiska justeringar ännu. Ditt kalorimål (${calorieTarget} kcal) gäller tills tillräcklig data finns.</p>
-                ` : `
-                    <div class="adjustment-list">
-                        ${adjustments.map((a) => `
-                            <div class="adjustment-item">
-                                <strong>${formatDate(a.date)}</strong>
-                                <p>Viktmedel: ${formatKg(a.previousWeightAverage)} → ${formatKg(a.newWeightAverage)}</p>
-                                <p>Nytt kalorimål: ${a.previous.calorieTarget} → <strong>${a.next.calorieTarget} kcal</strong></p>
-                                <small>${escapeHtml(a.reason || '')}</small>
-                            </div>
-                        `).join('')}
-                    </div>
-                `}
+                <div class="adjustment-list">
+                    ${adjustments.map((a) => `
+                        <div class="adjustment-item">
+                            <strong>${formatDate(a.date)}</strong>
+                            <p>Viktmedel: ${formatKg(a.previousWeightAverage)} → ${formatKg(a.newWeightAverage)}</p>
+                            <p>Nytt kalorimål: ${a.previous.calorieTarget} → <strong>${a.next.calorieTarget} kcal</strong></p>
+                            <small>${escapeHtml(a.reason || '')}</small>
+                        </div>
+                    `).join('')}
+                </div>
             </div>
+            `}
         `;
 
         $('back-to-plans')?.addEventListener('click', () => {
@@ -654,13 +647,6 @@ br>
         }
 
         weightInput?.addEventListener('input', refreshOutlierWarning);
-        dateInput?.addEventListener('change', () => {
-            const hint = $('dash-date-hint');
-            if (!hint || !dateInput) return;
-            hint.textContent = dateInput.value === todayLocal
-                ? `Idag (${formatDate(todayLocal)})`
-                : `Valt datum: ${formatDate(dateInput.value)}`;
-        });
 
         saveBtn?.addEventListener('click', () => {
             try {
