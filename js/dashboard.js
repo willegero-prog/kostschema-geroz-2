@@ -495,7 +495,7 @@
 
             <div class="dashboard-section follow-plan-section">
                 <h3>Följ ditt kostschema</h3>
-                <p class="section-help">Använd dessa mål varje dag. Kalorierna är ditt aktuella schema även innan du loggat vikt.</p>
+                <p class="section-help">Följ kalorimålet så gott du kan. Några kalorier upp eller ner spelar ingen större roll – det är helheten som räknas.</p>
                 <div class="follow-calorie-banner">
                     <div>
                         <span class="follow-label">Ät idag</span>
