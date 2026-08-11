@@ -2206,6 +2206,13 @@ body::before {
     font-size: 0.82rem;
 }
 
+.chart-adjust-explain {
+    margin: 10px 0 14px;
+    color: var(--text-secondary);
+    font-size: 0.88rem;
+    line-height: 1.5;
+}
+
 .saved-plan-card {
     text-align: left;
     padding: 16px 18px;

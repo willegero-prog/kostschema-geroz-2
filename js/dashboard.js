@@ -168,6 +168,16 @@
         });
     }
 
+    function calorieAdjustExplainCopy(goal) {
+        if (goal === 'cut') {
+            return 'Kalorimålet justeras först när veckomedelvärdet av din vikt tydligt minskar över ca 2–3 veckor — inte efter en enstaka invägning. Då räknas ett nytt dagsmål utifrån det nya snittet.';
+        }
+        if (goal === 'bulk') {
+            return 'Kalorimålet justeras först när veckomedelvärdet av din vikt tydligt ökar över ca 2–3 veckor — inte efter en enstaka invägning. Då räknas ett nytt dagsmål utifrån det nya snittet.';
+        }
+        return 'Kalorimålet justeras först när veckomedelvärdet av din vikt förändras tydligt över ca 2–3 veckor. Då räknas underhållskalorierna om utifrån det nya snittet så att du kan hålla vikten jämn.';
+    }
+
     function renderWeightChart(logs) {
         const sorted = WeightEngine.sortLogs(logs).slice(-28);
         if (sorted.length < 2) {
