@@ -563,7 +563,10 @@
             <div class="dashboard-section">
                 <h3>2. Din viktutveckling</h3>
                 ${renderWeightChart(plan.weightLogs)}
-                <p class="chart-adjust-explain">${escapeHtml(calorieAdjustExplainCopy(plan.goal))}</p>
+                <div class="chart-adjust-explain" role="note">
+                    <strong>När ändras kalorimålet?</strong>
+                    <p>${escapeHtml(calorieAdjustExplainCopy(plan.goal))}</p>
+                </div>
                 <div class="weekly-averages">
                     <p class="week-avg-title">Senaste veckomedelvärden</p>
                     ${weeks.slice(-6).map((w) => `
