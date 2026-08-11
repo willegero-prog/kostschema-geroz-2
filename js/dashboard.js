@@ -483,7 +483,7 @@
                         ? 'Ändras i takt med att din kroppsvikt minskar.'
                         : plan.goal === 'bulk'
                             ? 'Ändras i takt med din viktökning för att bibehålla ett kontrollerat kaloriöverskott.'
-                            : 'Ändras när din vikttrend visar att kalorimålet behöver justeras.'}</span>
+                            : 'Detta ska hållas för att bibehålla din nuvarande muskelmassa och styrka'}</span>
                 </div>
                 <div class="dash-hero-card">
                     <span class="dash-hero-label">Vikttrend</span>
