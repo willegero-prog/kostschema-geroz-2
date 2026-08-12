@@ -10,6 +10,7 @@ const state = {
     bmr: null,
     tdee: null,
     calorieAdjustment: null,
+    targetWeight: null,
     trainingDays: [],
     mealStructure: null,
     snacks: {
@@ -88,10 +89,13 @@ function updateBMRAndTDEE() {
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
+    window.state = state;
     initializeEventListeners();
     updateStepDisplay();
     setupBMRAutoCalculation();
     setupHamburgerMenu();
+    if (window.AccountUI) AccountUI.initAccountUi();
+    wireAccountMenuButtons();
     
     // Set default activity level button as selected
     const defaultActivityBtn = document.querySelector('.activity-btn[data-activity="moderate"]');
@@ -100,6 +104,26 @@ document.addEventListener('DOMContentLoaded', () => {
         defaultActivityBtn.setAttribute('data-selected', 'true');
     }
 });
+
+function wireAccountMenuButtons() {
+    const closeMenu = () => {
+        document.getElementById('hamburger-icon')?.classList.remove('active');
+        document.getElementById('hamburger-overlay')?.classList.remove('active');
+    };
+
+    document.getElementById('menu-login-btn')?.addEventListener('click', () => {
+        closeMenu();
+        document.getElementById('auth-login-btn')?.click();
+    });
+    document.getElementById('menu-dashboard-btn')?.addEventListener('click', () => {
+        closeMenu();
+        AccountUI.openDashboard();
+    });
+    document.getElementById('menu-logout-btn')?.addEventListener('click', () => {
+        closeMenu();
+        document.getElementById('auth-logout-btn')?.click();
+    });
+}
 
 function setupHamburgerMenu() {
     const hamburgerIcon = document.getElementById('hamburger-icon');
@@ -157,6 +181,10 @@ function initializeEventListeners() {
             updateCalorieLabel();
         });
     });
+
+    const calorieAdjustmentInput = document.getElementById('calorie-adjustment');
+    calorieAdjustmentInput?.addEventListener('input', updateCalorieAdjustmentWarnings);
+    calorieAdjustmentInput?.addEventListener('change', updateCalorieAdjustmentWarnings);
 
     // Day selection
     document.querySelectorAll('.day-btn').forEach(btn => {
@@ -247,12 +275,15 @@ function updateCalorieLabel() {
     const bulkGuidance = document.getElementById('bulk-guidance');
     const cutGuidance = document.getElementById('cut-guidance');
     const guidanceTitle = document.getElementById('guidance-title');
+    const targetWeightGroup = document.getElementById('target-weight-group');
+    const targetWeightInput = document.getElementById('target-weight');
     
     if (state.goal === 'bulk') {
         label.textContent = 'Kaloriöverskott (kcal)';
         help.textContent = 'Ange det dagliga kaloriöverskottet du vill uppnå';
         input.disabled = false;
         input.value = '';
+        if (targetWeightGroup) targetWeightGroup.style.display = '';
         if (guidance) {
             guidance.style.display = 'block';
             if (bulkGuidance) bulkGuidance.style.display = 'block';
@@ -264,6 +295,7 @@ function updateCalorieLabel() {
         help.textContent = 'Ange det dagliga kaloriunderskottet du vill uppnå';
         input.disabled = false;
         input.value = '';
+        if (targetWeightGroup) targetWeightGroup.style.display = '';
         if (guidance) {
             guidance.style.display = 'block';
             if (bulkGuidance) bulkGuidance.style.display = 'none';
@@ -275,9 +307,46 @@ function updateCalorieLabel() {
         help.textContent = 'Maintain - kalorier kommer att sättas för att behålla din nuvarande vikt';
         input.disabled = true;
         input.value = '0';
+        if (targetWeightGroup) targetWeightGroup.style.display = 'none';
+        if (targetWeightInput) targetWeightInput.value = '';
+        state.targetWeight = null;
         if (guidance) {
             guidance.style.display = 'none';
         }
+    }
+    updateCalorieAdjustmentWarnings();
+}
+
+function updateCalorieAdjustmentWarnings() {
+    const lowWarning = document.getElementById('calorie-low-warning');
+    const highWarning = document.getElementById('calorie-high-warning');
+    const input = document.getElementById('calorie-adjustment');
+    if (!input) return;
+
+    const value = parseFloat(input.value);
+    const eligible = (state.goal === 'bulk' || state.goal === 'cut')
+        && Number.isFinite(value)
+        && value >= 0
+        && !input.disabled;
+
+    if (lowWarning) {
+        const showLow = eligible && value < 300;
+        lowWarning.hidden = !showLow;
+        lowWarning.textContent = showLow
+            ? (state.goal === 'bulk'
+                ? 'Att bulka på mindre än 300 kcal i överskott lämnar väldigt lite felmarginal. Det blir mer av en extrem \'lean bulk\' där minsta lilla missräkning i kosten eller en extra promenad gör att du hamnar på underhållsnivå och din bulk blir ineffektiv.'
+                : 'Ett underskott på under 300 kalorier ger kroppen en väldigt liten felmarginal. Det fungerar absolut, men det kräver extrem precision i kaloriräkningen eftersom en extra såsklick eller en missad promenad snabbt raderar ut hela underskottet för dagen.')
+            : '';
+    }
+
+    if (highWarning) {
+        const showHigh = eligible && value > 500;
+        highWarning.hidden = !showHigh;
+        highWarning.textContent = showHigh
+            ? (state.goal === 'bulk'
+                ? 'Ett överskott på över 500 kalorier innebär att du sannolikt går upp snabbare än vad som krävs för optimal muskeluppbyggnad. En större del av viktökningen riskerar därför att komma från fett istället för muskelmassa, vilket gör bulken mindre effektiv.'
+                : 'Ett underskott på över 500 kalorier kan göra det svårare att behålla muskelmassa och styrka under deffen. Ju större underskottet blir, desto viktigare blir det att prioritera protein och återhämtning för att minimera risken för muskelförlust.')
+            : '';
     }
 }
 
@@ -315,6 +384,7 @@ function restartMealPlan() {
     state.bmr = null;
     state.tdee = null;
     state.calorieAdjustment = null;
+    state.targetWeight = null;
     state.trainingDays = [];
     state.snacks = {
         snack1: false,
@@ -329,6 +399,8 @@ function restartMealPlan() {
     document.getElementById('bmr').value = '';
     document.getElementById('tdee').value = '';
     document.getElementById('calorie-adjustment').value = '';
+    const targetWeightEl = document.getElementById('target-weight');
+    if (targetWeightEl) targetWeightEl.value = '';
     
     // Reset selected buttons
     document.querySelectorAll('.goal-btn').forEach(b => b.classList.remove('selected'));
@@ -391,6 +463,10 @@ function validateCurrentStep() {
             break;
         case 3:
             const calorieInput = document.getElementById('calorie-adjustment').value;
+            const targetWeightInput = document.getElementById('target-weight')?.value;
+            state.targetWeight = state.goal === 'maintain'
+                ? null
+                : (targetWeightInput ? parseFloat(targetWeightInput) : null);
             if (state.goal === 'maintain') {
                 state.calorieAdjustment = 0;
             } else {
@@ -490,7 +566,6 @@ function getMealDisplayName(name) {
 }
 
 function generateMealPlan() {
-    const macros = macroDistributions[state.goal];
     const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
     
     // Calculate daily calories
@@ -530,15 +605,10 @@ function generateMealPlan() {
         }
     }
 
-    // Calculate macros per gram
-    const proteinPerGram = 4; // calories per gram
-    const carbsPerGram = 4;
-    const fatPerGram = 9;
-
-    // Calculate total macros for the day
-    const totalProtein = (baseCalories * macros.protein / 100) / proteinPerGram;
-    const totalCarbs = (baseCalories * macros.carbs / 100) / carbsPerGram;
-    const totalFat = (baseCalories * macros.fat / 100) / fatPerGram;
+    const dailyCalorieTarget = Math.round(baseCalories);
+    const computedMacros = window.NutritionCore
+        ? NutritionCore.macrosForCalories(dailyCalorieTarget, state.goal, state.weight)
+        : { protein: 0, carbs: 0, fat: 0, proteinG: 0, carbsG: 0, fatG: 0 };
 
     // Adjust for training days (add 10% more calories on training days)
     const trainingDayMultiplier = 1.1;
@@ -555,7 +625,15 @@ function generateMealPlan() {
             goal: state.goal,
             calorieAdjustment: state.goal === 'maintain' ? 'Behålla' : state.calorieAdjustment
         },
-        macros: macros,
+        dailyCalorieTarget,
+        macros: {
+            protein: computedMacros.proteinPct ?? computedMacros.protein,
+            carbs: computedMacros.carbsPct ?? computedMacros.carbs,
+            fat: computedMacros.fatPct ?? computedMacros.fat,
+            proteinG: computedMacros.proteinG,
+            carbsG: computedMacros.carbsG,
+            fatG: computedMacros.fatG
+        },
         days: [],
         calorieRating
     };
@@ -613,9 +691,12 @@ function generateMealPlan() {
         const dayMultiplier = isTrainingDay ? trainingDayMultiplier : restDayMultiplier;
         
         const dayCalories = baseCalories * dayMultiplier;
-        const dayProtein = (dayCalories * macros.protein / 100) / proteinPerGram;
-        const dayCarbs = (dayCalories * macros.carbs / 100) / carbsPerGram;
-        const dayFat = (dayCalories * macros.fat / 100) / fatPerGram;
+        const dayMacros = window.NutritionCore
+            ? NutritionCore.macrosForCalories(dayCalories, state.goal, state.weight)
+            : { proteinG: 0, carbsG: 0, fatG: 0 };
+        const dayProtein = dayMacros.proteinG;
+        const dayCarbs = dayMacros.carbsG;
+        const dayFat = dayMacros.fatG;
 
         const dayPlan = {
             name: dayNames[day],
@@ -726,8 +807,9 @@ function displayMealPlan(plan) {
                     <span class="info-explanation">Total Daily Energy Expenditure - totala kalorier förbrända per dag</span>
                 </div>
                 <div class="info-item">
-                    <span class="info-label">Dagligt Mål</span>
-                    <span class="info-value">${plan.userInfo.calorieAdjustment === 'Behålla' ? 'Behålla' : plan.userInfo.calorieAdjustment + ' kcal ' + (plan.userInfo.goal === 'bulk' ? 'överskott' : 'underskott')}</span>
+                    <span class="info-label">Dagligt kalorimål</span>
+                    <span class="info-value">${plan.dailyCalorieTarget || '–'} kcal</span>
+                    <span class="info-explanation">${plan.userInfo.calorieAdjustment === 'Behålla' ? 'Baserat på TDEE (underhåll)' : `${plan.userInfo.calorieAdjustment} kcal ${plan.userInfo.goal === 'bulk' ? 'överskott' : 'underskott'} ovanpå TDEE`}</span>
                 </div>
             </div>
             <div class="calorie-rating rating-${plan.calorieRating.level}">
@@ -753,6 +835,10 @@ function displayMealPlan(plan) {
             </div>
             <div class="plan-actions">
                 <button type="button" id="download-pdf" class="download-btn">Ladda ned som PDF</button>
+                <button type="button" id="save-plan-btn" class="save-plan-btn">
+                    <span class="save-plan-btn-title">Spara kostschema</span>
+                    <span class="save-plan-btn-sub">Håll din kostplan uppdaterad och följ dina resultat</span>
+                </button>
                 <button type="button" id="restart-btn-top" class="restart-btn">Börja om</button>
             </div>
         </div>
@@ -863,277 +949,16 @@ function displayMealPlan(plan) {
 }
 
 function downloadPDF() {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    const plan = state.mealPlan;
-
-    let yPos = 0;
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
-    const margin = 15;
-    const contentWidth = pageWidth - (margin * 2);
-    let currentPage = 1;
-    let totalPages = 1;
-
-    // Helper function to check page break
-    function checkPageBreak(requiredSpace = 10) {
-        if (yPos > pageHeight - margin - requiredSpace) {
-            // Add footer before new page
-            addFooter();
-            doc.addPage();
-            currentPage++;
-            totalPages = currentPage;
-            yPos = 0;
-            // Add blue header on new page
-            doc.setFillColor(59, 130, 246);
-            doc.rect(0, yPos, pageWidth, 25, 'F');
-            doc.setFontSize(18);
-            doc.setFont(undefined, 'bold');
-            doc.setTextColor(255, 255, 255);
-            doc.text('Veckoschema', pageWidth / 2, yPos + 16, { align: 'center' });
-            yPos = 30;
-            return true;
-        }
-        return false;
-    }
-    
-    // Function to add footer
-    function addFooter() {
-        const footerY = pageHeight - 10;
-        doc.setFontSize(7);
-        doc.setFont(undefined, 'normal');
-        doc.setTextColor(150, 150, 150);
-        const footerText = `Genererad av NutriPlan • Sida ${currentPage} av ${totalPages}`;
-        doc.text(footerText, pageWidth / 2, footerY, { align: 'center' });
-        doc.setFont(undefined, 'italic');
-        doc.text('By Gero\'Z', pageWidth / 2, footerY + 5, { align: 'center' });
-    }
-
-    // Blue header band
-    doc.setFillColor(59, 130, 246); // Blue color
-    doc.rect(0, yPos, pageWidth, 25, 'F');
-    doc.setFontSize(18);
-    doc.setFont(undefined, 'bold');
-    doc.setTextColor(255, 255, 255); // White text
-    doc.text('Veckoschema', pageWidth / 2, yPos + 16, { align: 'center' });
-    yPos = 35;
-
-    // Body Information Section
-    checkPageBreak(40);
-    doc.setFontSize(10);
-    doc.setFont(undefined, 'bold');
-    doc.setTextColor(0, 0, 0);
-    doc.text('Personlig Information', margin, yPos);
-    yPos += 8;
-    
-    // Body info in a clean format
-    doc.setFontSize(9);
-    doc.setFont(undefined, 'normal');
-    doc.setTextColor(0, 0, 0);
-    
-    const bodyInfoLines = [
-        `Kön: ${plan.userInfo.gender === 'female' ? 'Kvinna' : 'Man'}`,
-        `Ålder: ${plan.userInfo.age} år`,
-        `Längd: ${plan.userInfo.height} cm`,
-        `Vikt: ${plan.userInfo.weight} kg`,
-        `BMR: ${plan.userInfo.bmr} kcal/dag`,
-        `TDEE: ${plan.userInfo.tdee} kcal/dag`
-    ];
-    
-    bodyInfoLines.forEach((line, index) => {
-        const xPos = index < 3 ? margin : margin + contentWidth / 2;
-        const lineY = yPos + (index < 3 ? index * 6 : (index - 3) * 6);
-        doc.text(line, xPos, lineY);
-    });
-    
-    yPos += 20;
-    
-    // Goal and calorie adjustment
-    let goalDisplayText = '';
-    let goalDescription = '';
-    
-    if (plan.userInfo.goal === 'bulk') {
-        goalDisplayText = 'Bulk';
-        goalDescription = 'Bygga muskler genom kaloriöverskott';
-    } else if (plan.userInfo.goal === 'cut') {
-        goalDisplayText = 'Deff';
-        goalDescription = 'Gå ner i vikt genom kaloriunderskott';
-    } else {
-        goalDisplayText = 'Maintain';
-        goalDescription = 'Behålla nuvarande vikt';
-    }
-    
-    const targetText = plan.userInfo.calorieAdjustment === 'Behålla' 
-        ? 'Behålla' 
-        : `${plan.userInfo.calorieAdjustment} kcal ${plan.userInfo.goal === 'bulk' ? 'överskott' : 'underskott'}`;
-    
-    doc.setFontSize(9);
-    doc.setFont(undefined, 'bold');
-    doc.setTextColor(0, 0, 0);
-    doc.text(`Mål: ${goalDisplayText}`, margin, yPos);
-    doc.setFont(undefined, 'normal');
-    doc.setFontSize(8);
-    doc.setTextColor(100, 100, 100);
-    doc.text(goalDescription, margin, yPos + 5);
-    
-    doc.setFontSize(9);
-    doc.setFont(undefined, 'normal');
-    doc.setTextColor(0, 0, 0);
-    doc.text(`Dagligt mål: ${targetText}`, margin + contentWidth / 2, yPos);
-    yPos += 12;
-    
-    // Separator line
-    doc.setDrawColor(200, 200, 200);
-    doc.line(margin, yPos, pageWidth - margin, yPos);
-    yPos += 10;
-
-    // Guide: Så räknar du kalorier - keep this section
-    checkPageBreak(30);
-    doc.setFontSize(10);
-    doc.setFont(undefined, 'bold');
-    doc.setTextColor(0, 0, 0);
-    doc.text('Så räknar du kalorier', margin, yPos);
-    yPos += 7;
-    doc.setFont(undefined, 'normal');
-    doc.setFontSize(8);
-    doc.setTextColor(75, 85, 99);
-    const guideLines = [
-        '1 g protein = 4 kcal, 1 g kolhydrater = 4 kcal, 1 g fett = 9 kcal.',
-        'Använd livsmedelsförpackningar eller en app (t.ex. Lifesum, MyFitnessPal) för att se näringsvärden.',
-        'Räkna ut mängden genom att multiplicera gram av varje makro med värdena ovan.',
-        'Jämför sedan dagens totala kalorier och makron med planen i detta dokument.'
-    ];
-    guideLines.forEach(line => {
-        checkPageBreak(7);
-        doc.text(line, margin, yPos);
-        yPos += 6;
-    });
-    yPos += 10;
-
-    // Meal Plan - new structure matching the image
-    plan.days.forEach(day => {
-        checkPageBreak(60);
-        
-        // Light grey horizontal bar for day title
-        doc.setFillColor(240, 240, 240); // Light grey #F0F0F0
-        doc.rect(margin, yPos, contentWidth, 12, 'F');
-        
-        // Day name (left-aligned, bold)
-        doc.setFontSize(11);
-        doc.setFont(undefined, 'bold');
-        doc.setTextColor(0, 0, 0);
-        doc.text(day.name, margin + 5, yPos + 8);
-        
-        // Day type and calories in darker grey rounded rectangle (right-aligned)
-        const dayTypeText = day.isTrainingDay ? 'Träningsdag' : 'Vilodag';
-        const dayInfoText = `${dayTypeText} • ${day.calories} kcal`;
-        const infoBoxWidth = 70;
-        const infoBoxX = pageWidth - margin - infoBoxWidth - 5;
-        
-        doc.setFillColor(224, 224, 224); // Darker grey #E0E0E0
-        doc.setDrawColor(200, 200, 200);
-        doc.roundedRect(infoBoxX, yPos + 2, infoBoxWidth, 8, 2, 2, 'FD');
-        doc.setFontSize(8);
-        doc.setFont(undefined, 'normal');
-        doc.setTextColor(0, 0, 0);
-        doc.text(dayInfoText, infoBoxX + infoBoxWidth / 2, yPos + 7, { align: 'center' });
-        
-        yPos += 15;
-        
-        // Table header row
-        checkPageBreak(40);
-        const colWidths = {
-            meal: contentWidth * 0.35,
-            calories: contentWidth * 0.15,
-            protein: contentWidth * 0.15,
-            carbs: contentWidth * 0.15,
-            fat: contentWidth * 0.15
+    if (window.MealPlanPDF && state.mealPlan) {
+        const payload = {
+            planName: 'Kostschema',
+            versionDate: new Date().toISOString().slice(0, 10),
+            userInfo: state.mealPlan.userInfo,
+            days: state.mealPlan.days
         };
-        
-        const colX = {
-            meal: margin,
-            calories: margin + colWidths.meal,
-            protein: margin + colWidths.meal + colWidths.calories,
-            carbs: margin + colWidths.meal + colWidths.calories + colWidths.protein,
-            fat: margin + colWidths.meal + colWidths.calories + colWidths.protein + colWidths.carbs
-        };
-        
-        // Table header
-        doc.setFontSize(9);
-        doc.setFont(undefined, 'normal');
-        doc.setTextColor(0, 0, 0);
-        doc.text('Måltid', colX.meal + 3, yPos);
-        doc.text('Kalorier', colX.calories + colWidths.calories / 2, yPos, { align: 'center' });
-        doc.text('Protein', colX.protein + colWidths.protein / 2, yPos, { align: 'center' });
-        doc.text('Kolhydrater', colX.carbs + colWidths.carbs / 2, yPos, { align: 'center' });
-        doc.text('Fett', colX.fat + colWidths.fat / 2, yPos, { align: 'center' });
-        yPos += 8;
-        
-        // Calculate totals
-        let dayTotalCalories = 0;
-        let dayTotalProtein = 0;
-        let dayTotalCarbs = 0;
-        let dayTotalFat = 0;
-        
-        // Meal rows
-        day.meals.forEach(meal => {
-            checkPageBreak(10);
-            const mealDisplayName = getMealDisplayName(meal.name).replace(/[☀️🍎🍽️🌙🏋️]/g, '').trim();
-            
-            doc.setFontSize(9);
-            doc.setFont(undefined, 'normal');
-            doc.setTextColor(0, 0, 0);
-            doc.text(mealDisplayName, colX.meal + 3, yPos);
-            doc.text(String(meal.calories), colX.calories + colWidths.calories / 2, yPos, { align: 'center' });
-            doc.text(`${meal.protein}g`, colX.protein + colWidths.protein / 2, yPos, { align: 'center' });
-            doc.text(`${meal.carbs}g`, colX.carbs + colWidths.carbs / 2, yPos, { align: 'center' });
-            doc.text(`${meal.fat}g`, colX.fat + colWidths.fat / 2, yPos, { align: 'center' });
-            
-            dayTotalCalories += meal.calories;
-            dayTotalProtein += meal.protein;
-            dayTotalCarbs += meal.carbs;
-            dayTotalFat += meal.fat;
-            
-            yPos += 7;
-        });
-        
-        // Separator line
-        checkPageBreak(10);
-        doc.setDrawColor(200, 200, 200);
-        doc.line(margin, yPos, pageWidth - margin, yPos);
-        yPos += 5;
-        
-        // Total row - blue and bold
-        doc.setFontSize(9);
-        doc.setFont(undefined, 'bold');
-        doc.setTextColor(59, 130, 246); // Blue color
-        doc.text('Totalt', colX.meal + 3, yPos);
-        doc.text(String(dayTotalCalories), colX.calories + colWidths.calories / 2, yPos, { align: 'center' });
-        doc.text(`${dayTotalProtein}g`, colX.protein + colWidths.protein / 2, yPos, { align: 'center' });
-        doc.text(`${dayTotalCarbs}g`, colX.carbs + colWidths.carbs / 2, yPos, { align: 'center' });
-        doc.text(`${dayTotalFat}g`, colX.fat + colWidths.fat / 2, yPos, { align: 'center' });
-        
-        yPos += 12;
-    });
-
-    // Final footer on last page
-    addFooter();
-    
-    // Update all page footers with correct total page count
-    const totalPageCount = doc.internal.getNumberOfPages();
-    for (let i = 1; i <= totalPageCount; i++) {
-        doc.setPage(i);
-        const footerY = pageHeight - 10;
-        doc.setFontSize(7);
-        doc.setFont(undefined, 'normal');
-        doc.setTextColor(150, 150, 150);
-        const footerText = `Genererad av NutriPlan • Sida ${i} av ${totalPageCount}`;
-        doc.text(footerText, pageWidth / 2, footerY, { align: 'center' });
-        doc.setFont(undefined, 'italic');
-        doc.text('By Gero\'Z', pageWidth / 2, footerY + 5, { align: 'center' });
+        MealPlanPDF.exportMealPlanPdf(payload, { fileName: 'kostplan.pdf' });
+        return;
     }
-
-    // Save PDF
-    doc.save('kostplan.pdf');
+    alert('PDF kunde inte skapas just nu. Ladda om sidan och försök igen.');
 }
 

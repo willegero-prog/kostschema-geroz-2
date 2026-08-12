@@ -1,0 +1,473 @@
+/**
+ * Weight logging, weekly averages, trend evaluation, and plan auto-adjustment.
+ * Avoids day-to-day noise: uses weekly means and a 14–21 day evaluation window.
+ */
+(function (global) {
+    const EVAL_MIN_DAYS = 14;
+    const EVAL_PREFERRED_DAYS = 21;
+    const MIN_CHANGE_KG = 0.5;
+    const MIN_CHANGE_PCT = 0.006; // 0.6%
+    const ADJUST_COOLDOWN_DAYS = 14;
+
+    function toDateOnly(value) {
+        if (!value) return null;
+        return String(value).slice(0, 10);
+    }
+
+    function parseDate(dateStr) {
+        const [y, m, d] = dateStr.split('-').map(Number);
+        return new Date(Date.UTC(y, m - 1, d));
+    }
+
+    function daysBetween(a, b) {
+        const ms = parseDate(b) - parseDate(a);
+        return Math.round(ms / (24 * 60 * 60 * 1000));
+    }
+
+    function isoWeekKey(dateStr) {
+        const date = parseDate(dateStr);
+        const tmp = new Date(date.getTime());
+        tmp.setUTCDate(tmp.getUTCDate() + 4 - (tmp.getUTCDay() || 7));
+        const yearStart = new Date(Date.UTC(tmp.getUTCFullYear(), 0, 1));
+        const weekNo = Math.ceil((((tmp - yearStart) / 86400000) + 1) / 7);
+        return `${tmp.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
+    }
+
+    function sortLogs(logs) {
+        return [...(logs || [])].sort((a, b) => String(a.date).localeCompare(String(b.date)) || String(a.createdAt).localeCompare(String(b.createdAt)));
+    }
+
+    function weeklyAverages(logs) {
+        const groups = {};
+        sortLogs(logs).forEach((log) => {
+            const key = isoWeekKey(log.date);
+            if (!groups[key]) groups[key] = { week: key, weights: [], dates: [] };
+            groups[key].weights.push(Number(log.weight));
+            groups[key].dates.push(log.date);
+        });
+        return Object.values(groups)
+            .map((g) => ({
+                week: g.week,
+                average: Math.round((g.weights.reduce((s, w) => s + w, 0) / g.weights.length) * 10) / 10,
+                count: g.weights.length,
+                startDate: g.dates[0],
+                endDate: g.dates[g.dates.length - 1]
+            }))
+            .sort((a, b) => a.week.localeCompare(b.week));
+    }
+
+    function latestWeeklyAverage(logs) {
+        const weeks = weeklyAverages(logs);
+        return weeks.length ? weeks[weeks.length - 1] : null;
+    }
+
+    function weightStats(plan) {
+        const logs = sortLogs(plan.weightLogs || []);
+        const latestLog = logs.length ? logs[logs.length - 1] : null;
+        const week = latestWeeklyAverage(logs);
+        const start = plan.startingWeight;
+        const current = plan.currentWeight;
+        const change = current != null && start != null
+            ? Math.round((current - start) * 10) / 10
+            : null;
+
+        let trend = 'stabil';
+        if (change != null) {
+            if (change <= -0.5) trend = 'nedåt';
+            else if (change >= 0.5) trend = 'uppåt';
+        }
+
+        return {
+            startingWeight: start,
+            currentWeight: current,
+            targetWeight: plan.targetWeight,
+            latestLoggedWeight: latestLog ? latestLog.weight : null,
+            latestLogDate: latestLog ? latestLog.date : null,
+            weeklyAverage: week ? week.average : null,
+            weeklyAverageWeek: week ? week.week : null,
+            weightChange: change,
+            trend,
+            logCount: logs.length,
+            lastUpdatedAt: plan.updatedAt,
+            lastAdjustedAt: plan.lastAdjustedAt
+        };
+    }
+
+    function goalProgressCopy(plan) {
+        const start = plan.startingWeight;
+        const target = plan.targetWeight;
+        const goal = plan.goal;
+        if (goal === 'cut') {
+            const targetText = target != null ? ` mot målvikt ${target} kg` : '';
+            return `Planen bygger på en gradvis viktminskning från ${start} kg${targetText}. Systemet följer din vikttrend via veckomedelvärden och justerar kalorimålet först när trenden är tydlig över ca 2–3 veckor — inte efter en enstaka invägning.`;
+        }
+        if (goal === 'bulk') {
+            const targetText = target != null ? ` mot målvikt ${target} kg` : '';
+            return `Planen bygger på en gradvis viktökning från ${start} kg${targetText}. Kaloriöverskottet hålls relevant genom att energibehovet räknas om när vikttrenden visar en verklig förändring.`;
+        }
+        return `Planen bygger på viktunderhåll kring ${start} kg. När din faktiska kroppsvikt förändras över tid kan kalorimålet anpassas så att underhållet fortsätter stämma.`;
+    }
+
+    function canEvaluate(plan, today = toDateOnly(new Date().toISOString())) {
+        const logs = sortLogs(plan.weightLogs || []);
+        if (logs.length < 4) {
+            return { ok: false, reason: 'Behöver fler invägningar (minst några dagar per vecka).' };
+        }
+        const first = logs[0].date;
+        const span = daysBetween(first, today);
+        if (span < EVAL_MIN_DAYS) {
+            return { ok: false, reason: `Vänta tills du loggat i minst ${EVAL_MIN_DAYS} dagar (nu ${span}).` };
+        }
+        if (plan.lastAdjustedAt) {
+            const sinceAdj = daysBetween(toDateOnly(plan.lastAdjustedAt), today);
+            if (sinceAdj < ADJUST_COOLDOWN_DAYS) {
+                return { ok: false, reason: `Senaste justeringen var för nyligen (${sinceAdj} dagar sedan).` };
+            }
+        }
+        return { ok: true };
+    }
+
+    function evaluateTrend(plan, today = null) {
+        const logsAll = sortLogs(plan.weightLogs || []);
+        const referenceDay = today || (logsAll.length ? logsAll[logsAll.length - 1].date : toDateOnly(new Date().toISOString()));
+        const gate = canEvaluate(plan, referenceDay);
+        if (!gate.ok) {
+            return { shouldAdjust: false, reason: gate.reason, stats: weightStats(plan) };
+        }
+
+        const logs = logsAll.filter((l) => daysBetween(l.date, referenceDay) <= EVAL_PREFERRED_DAYS + 7);
+        const weeks = weeklyAverages(logs);
+        if (weeks.length < 2) {
+            return { shouldAdjust: false, reason: 'Behöver minst två veckomedelvärden.', stats: weightStats(plan) };
+        }
+
+        const older = weeks[Math.max(0, weeks.length - 3)];
+        const newer = weeks[weeks.length - 1];
+        const delta = Math.round((newer.average - older.average) * 10) / 10;
+        const threshold = Math.max(MIN_CHANGE_KG, Math.round(plan.startingWeight * MIN_CHANGE_PCT * 10) / 10);
+        const meaningful = Math.abs(delta) >= threshold;
+
+        // Direction should align with goal intent OR be large enough for maintain/recalc
+        let aligned = false;
+        if (plan.goal === 'cut') aligned = delta <= -threshold || Math.abs(delta) >= threshold;
+        else if (plan.goal === 'bulk') aligned = delta >= threshold || Math.abs(delta) >= threshold;
+        else aligned = Math.abs(delta) >= threshold;
+
+        if (!meaningful || !aligned) {
+            return {
+                shouldAdjust: false,
+                reason: `Vikttrenden (${delta > 0 ? '+' : ''}${delta} kg mellan veckomedel) är för liten för att justera (tröskel ±${threshold} kg).`,
+                delta,
+                olderWeek: older,
+                newerWeek: newer,
+                stats: weightStats(plan)
+            };
+        }
+
+        return {
+            shouldAdjust: true,
+            reason: `Tydlig vikttrend: veckomedel ${older.average} → ${newer.average} kg (${delta > 0 ? '+' : ''}${delta} kg).`,
+            proposedWeight: newer.average,
+            delta,
+            olderWeek: older,
+            newerWeek: newer,
+            stats: weightStats(plan)
+        };
+    }
+
+    function localToday() {
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, '0');
+        const d = String(now.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    }
+
+    /**
+     * Flag clearly abnormal daily weigh-ins vs recent baseline.
+     * Threshold: >= 2.0 kg OR >= 3% from reference weight.
+     */
+    function detectWeightOutlier(plan, weight) {
+        const numeric = Number(weight);
+        if (!numeric || numeric < 20 || numeric > 400) {
+            return { isOutlier: false, severity: null, message: null, reference: null, delta: null };
+        }
+
+        const logs = sortLogs(plan.weightLogs || []);
+        const week = latestWeeklyAverage(logs);
+        const reference = week?.average
+            ?? (logs.length ? logs[logs.length - 1].weight : null)
+            ?? plan.currentWeight
+            ?? plan.startingWeight;
+
+        if (reference == null) {
+            return { isOutlier: false, severity: null, message: null, reference: null, delta: null };
+        }
+
+        const delta = Math.round((numeric - reference) * 10) / 10;
+        const absDelta = Math.abs(delta);
+        const pct = absDelta / reference;
+        const isOutlier = absDelta >= 2.0 || pct >= 0.03;
+
+        if (!isOutlier) {
+            return { isOutlier: false, severity: null, message: null, reference, delta };
+        }
+
+        const severity = absDelta >= 4.0 || pct >= 0.06 ? 'high' : 'medium';
+        const direction = delta > 0 ? 'högre' : 'lägre';
+        return {
+            isOutlier: true,
+            severity,
+            reference,
+            delta,
+            message: `Vikten är väldigt avvikande: ${numeric.toFixed(1)} kg är ${absDelta.toFixed(1)} kg ${direction} än din referensvikt (${reference.toFixed(1)} kg). Kontrollera att du skrivit rätt innan du sparar.`
+        };
+    }
+
+    function applyWeightLog(plan, weight, dateStr) {
+        const date = toDateOnly(dateStr || localToday());
+        const numeric = Number(weight);
+        if (!numeric || numeric < 20 || numeric > 400) {
+            throw new Error('Ange en giltig vikt');
+        }
+        const existingIdx = (plan.weightLogs || []).findIndex((l) => l.date === date);
+        const previousWeight = existingIdx >= 0 ? plan.weightLogs[existingIdx].weight : null;
+        const entry = {
+            id: existingIdx >= 0 ? plan.weightLogs[existingIdx].id : `w_${Date.now().toString(36)}`,
+            weight: Math.round(numeric * 10) / 10,
+            date,
+            createdAt: new Date().toISOString()
+        };
+        if (existingIdx >= 0) plan.weightLogs[existingIdx] = entry;
+        else {
+            plan.weightLogs = plan.weightLogs || [];
+            plan.weightLogs.push(entry);
+        }
+        plan.weightLogs = sortLogs(plan.weightLogs);
+        return {
+            entry,
+            wasOverwrite: existingIdx >= 0,
+            previousWeight,
+            weightChanged: existingIdx < 0 || Math.abs((previousWeight ?? 0) - entry.weight) >= 0.05
+        };
+    }
+
+    function evaluateTrendIgnoringCooldown(plan, today = null) {
+        const saved = plan.lastAdjustedAt;
+        plan.lastAdjustedAt = null;
+        try {
+            return evaluateTrend(plan, today);
+        } finally {
+            plan.lastAdjustedAt = saved;
+        }
+    }
+
+    function nutritionFromWeight(plan, weightKg) {
+        const Nutrition = global.NutritionCore;
+        const weight = Math.round(Number(weightKg) * 10) / 10;
+        const bmr = Nutrition.calculateBMR(plan.age, plan.height, weight, plan.gender);
+        const tdee = Nutrition.calculateTDEE(bmr, plan.activityLevel || 'moderate');
+        const calorieTarget = Nutrition.calorieTargetFrom(tdee, plan.goal, plan.calorieAdjustment);
+        const macros = Nutrition.macrosForCalories(calorieTarget, plan.goal, weight);
+        const mealPlanDays = Nutrition.rebuildMealPlanDays(plan, calorieTarget);
+        return { weight, bmr, tdee, calorieTarget, macros, mealPlanDays };
+    }
+
+    function applyNutritionState(plan, nutrition) {
+        plan.currentWeight = nutrition.weight;
+        plan.bmr = nutrition.bmr;
+        plan.tdee = nutrition.tdee;
+        plan.calorieTarget = nutrition.calorieTarget;
+        plan.macros = nutrition.macros;
+        plan.mealPlanDays = nutrition.mealPlanDays;
+    }
+
+    function baselineWeightForPlan(plan) {
+        if (plan.adjustments && plan.adjustments.length) {
+            const first = plan.adjustments[0];
+            if (first?.previous?.weight != null) return first.previous.weight;
+        }
+        return plan.startingWeight;
+    }
+
+    function adjustPlanFromTrend(plan, evaluation) {
+        if (!evaluation || !evaluation.shouldAdjust) return { adjusted: false, plan, evaluation };
+
+        const Nutrition = global.NutritionCore;
+        plan.versions = plan.versions || [];
+
+        if (!plan.versions.length) {
+            plan.versions.push(Nutrition.createVersionSnapshot(plan, {
+                label: 'Plan före uppdatering',
+                reason: 'Sparad innan automatisk justering',
+                date: plan.updatedAt || new Date().toISOString()
+            }));
+        }
+
+        const previous = {
+            currentWeight: plan.currentWeight,
+            bmr: plan.bmr,
+            tdee: plan.tdee,
+            calorieTarget: plan.calorieTarget,
+            macros: { ...plan.macros },
+            mealPlanDays: JSON.parse(JSON.stringify(plan.mealPlanDays || []))
+        };
+
+        const next = nutritionFromWeight(plan, evaluation.proposedWeight);
+        applyNutritionState(plan, next);
+        plan.lastAdjustedAt = new Date().toISOString();
+        plan.lastEvaluatedAt = plan.lastAdjustedAt;
+
+        const newVersion = Nutrition.createVersionSnapshot(plan, {
+            label: 'Uppdaterad efter vikttrend',
+            reason: evaluation.reason,
+            date: plan.lastAdjustedAt
+        });
+        plan.versions.push(newVersion);
+
+        const adjustment = {
+            id: `adj_${Date.now().toString(36)}`,
+            date: plan.lastAdjustedAt.slice(0, 10),
+            createdAt: plan.lastAdjustedAt,
+            reason: evaluation.reason,
+            versionId: newVersion.id,
+            previousWeightAverage: evaluation.olderWeek ? evaluation.olderWeek.average : previous.currentWeight,
+            newWeightAverage: evaluation.newerWeek ? evaluation.newerWeek.average : next.weight,
+            previous: {
+                weight: previous.currentWeight,
+                bmr: previous.bmr,
+                tdee: previous.tdee,
+                calorieTarget: previous.calorieTarget
+            },
+            next: {
+                weight: next.weight,
+                bmr: next.bmr,
+                tdee: next.tdee,
+                calorieTarget: next.calorieTarget
+            }
+        };
+        plan.adjustments = plan.adjustments || [];
+        plan.adjustments.push(adjustment);
+
+        return { adjusted: true, plan, adjustment, evaluation, version: newVersion };
+    }
+
+    /**
+     * After correcting a weight log, recompute calories from current data.
+     * Restores baseline if the trend no longer justifies an adjustment.
+     */
+    function reconcilePlanAfterWeightCorrection(plan, meta = {}) {
+        const Nutrition = global.NutritionCore;
+        if (!Nutrition) return { adjusted: false, reconciled: false, plan };
+
+        const evaluation = evaluateTrendIgnoringCooldown(plan, meta.today || null);
+        const logs = sortLogs(plan.weightLogs || []);
+        const latestLogWeight = logs.length ? logs[logs.length - 1].weight : plan.startingWeight;
+        const desiredWeight = evaluation.shouldAdjust
+            ? evaluation.proposedWeight
+            : baselineWeightForPlan(plan);
+
+        const next = nutritionFromWeight(plan, desiredWeight);
+        const previous = {
+            weight: plan.currentWeight,
+            bmr: plan.bmr,
+            tdee: plan.tdee,
+            calorieTarget: plan.calorieTarget
+        };
+
+        const calorieDelta = Math.abs((Number(previous.calorieTarget) || 0) - next.calorieTarget);
+        const weightDelta = Math.abs((Number(previous.weight) || 0) - next.weight);
+        if (calorieDelta < 1 && weightDelta < 0.05) {
+            if (!evaluation.shouldAdjust && latestLogWeight != null) {
+                plan.currentWeight = latestLogWeight;
+            }
+            plan.lastEvaluatedAt = new Date().toISOString();
+            return { adjusted: false, reconciled: false, plan, evaluation };
+        }
+
+        applyNutritionState(plan, next);
+        const now = new Date().toISOString();
+        plan.lastEvaluatedAt = now;
+        plan.lastAdjustedAt = evaluation.shouldAdjust ? now : null;
+
+        plan.versions = plan.versions || [];
+        const version = Nutrition.createVersionSnapshot(plan, {
+            label: evaluation.shouldAdjust ? 'Omräknad efter vikttrend' : 'Återställd efter viktorrigering',
+            reason: meta.reason
+                || (evaluation.shouldAdjust
+                    ? `Korrigerad viktlogg — ${evaluation.reason}`
+                    : 'Korrigerad viktlogg — trenden motiverar inte längre föregående kalorijustering.'),
+            date: now
+        });
+        plan.versions.push(version);
+
+        const adjustment = {
+            id: `adj_${Date.now().toString(36)}`,
+            date: now.slice(0, 10),
+            createdAt: now,
+            reason: version.reason,
+            versionId: version.id,
+            correction: true,
+            previousWeightAverage: evaluation.olderWeek ? evaluation.olderWeek.average : previous.weight,
+            newWeightAverage: evaluation.shouldAdjust
+                ? (evaluation.newerWeek ? evaluation.newerWeek.average : next.weight)
+                : next.weight,
+            previous: {
+                weight: previous.weight,
+                bmr: previous.bmr,
+                tdee: previous.tdee,
+                calorieTarget: previous.calorieTarget
+            },
+            next: {
+                weight: next.weight,
+                bmr: next.bmr,
+                tdee: next.tdee,
+                calorieTarget: next.calorieTarget
+            }
+        };
+        plan.adjustments = plan.adjustments || [];
+        plan.adjustments.push(adjustment);
+
+        return {
+            adjusted: true,
+            reconciled: true,
+            plan,
+            adjustment,
+            evaluation,
+            version
+        };
+    }
+
+    function evaluateAndMaybeAdjust(plan, options = {}) {
+        if (options.reconcile) {
+            return reconcilePlanAfterWeightCorrection(plan, options);
+        }
+        const evaluation = evaluateTrend(plan);
+        plan.lastEvaluatedAt = new Date().toISOString();
+        if (!evaluation.shouldAdjust) {
+            const logs = sortLogs(plan.weightLogs || []);
+            if (logs.length) plan.currentWeight = logs[logs.length - 1].weight;
+            return { adjusted: false, plan, evaluation };
+        }
+        return adjustPlanFromTrend(plan, evaluation);
+    }
+
+    global.WeightEngine = {
+        EVAL_MIN_DAYS,
+        EVAL_PREFERRED_DAYS,
+        localToday,
+        weeklyAverages,
+        latestWeeklyAverage,
+        weightStats,
+        goalProgressCopy,
+        evaluateTrend,
+        evaluateTrendIgnoringCooldown,
+        detectWeightOutlier,
+        applyWeightLog,
+        adjustPlanFromTrend,
+        reconcilePlanAfterWeightCorrection,
+        evaluateAndMaybeAdjust,
+        sortLogs,
+        nutritionFromWeight
+    };
+})(window);
