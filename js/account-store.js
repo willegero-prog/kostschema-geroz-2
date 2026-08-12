@@ -1,10 +1,11 @@
 /**
- * Local account + meal-plan persistence for preview.
- * Data is scoped per user email in localStorage.
- * Structure is API-ready so a future Neon/Clerk backend can replace this adapter.
+ * Account + meal-plan persistence.
+ * Auth identity comes from Clerk (Google / Apple / e-post).
+ * Plans are stored per authenticated user id in localStorage.
  */
 (function (global) {
-    const STORAGE_KEY = 'kostschema_accounts_v1';
+    const STORAGE_KEY = 'kostschema_accounts_v2';
+    const LEGACY_STORAGE_KEY = 'kostschema_accounts_v1';
     const SESSION_KEY = 'kostschema_session_v1';
 
     function uid(prefix) {
@@ -13,88 +14,123 @@
 
     function loadStore() {
         try {
-            return JSON.parse(localStorage.getItem(STORAGE_KEY)) || { users: {} };
-        } catch {
-            return { users: {} };
-        }
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (raw) return JSON.parse(raw) || { users: {} };
+        } catch { /* fall through */ }
+
+        // One-time migrate from preview local accounts
+        try {
+            const legacy = JSON.parse(localStorage.getItem(LEGACY_STORAGE_KEY) || 'null');
+            if (legacy?.users) {
+                const migrated = { users: {} };
+                Object.values(legacy.users).forEach((user) => {
+                    if (!user?.id) return;
+                    migrated.users[user.id] = {
+                        id: user.id,
+                        email: user.email,
+                        name: user.name || '',
+                        createdAt: user.createdAt || new Date().toISOString(),
+                        plans: user.plans || {}
+                    };
+                });
+                saveStore(migrated);
+                return migrated;
+            }
+        } catch { /* ignore */ }
+
+        return { users: {} };
     }
 
     function saveStore(store) {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
     }
 
-    async function hashPassword(password, salt) {
-        const enc = new TextEncoder();
-        const data = enc.encode(`${salt}:${password}`);
-        const digest = await crypto.subtle.digest('SHA-256', data);
-        return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('');
+    function ensureUserRecord(user) {
+        const store = loadStore();
+        if (!store.users[user.id]) {
+            store.users[user.id] = {
+                id: user.id,
+                email: user.email || '',
+                name: user.name || '',
+                createdAt: new Date().toISOString(),
+                plans: {}
+            };
+            // Import legacy plans if same email existed in old store
+            try {
+                const legacy = JSON.parse(localStorage.getItem(LEGACY_STORAGE_KEY) || 'null');
+                const email = String(user.email || '').toLowerCase();
+                const old = email && legacy?.users ? legacy.users[email] : null;
+                if (old?.plans && Object.keys(old.plans).length) {
+                    store.users[user.id].plans = { ...old.plans };
+                }
+            } catch { /* ignore */ }
+            saveStore(store);
+        } else {
+            const record = store.users[user.id];
+            if (user.email && record.email !== user.email) record.email = user.email;
+            if (user.name && record.name !== user.name) record.name = user.name;
+            saveStore(store);
+        }
+        return store.users[user.id];
     }
 
-    function getSession() {
+    function currentUser() {
+        if (global.ClerkAuth?.getUser) {
+            const clerkUser = global.ClerkAuth.getUser();
+            if (clerkUser?.id) {
+                ensureUserRecord(clerkUser);
+                return {
+                    id: clerkUser.id,
+                    email: clerkUser.email || '',
+                    name: clerkUser.name || '',
+                    provider: 'clerk'
+                };
+            }
+        }
+
+        // Legacy local session (only if Clerk is not active)
         try {
-            return JSON.parse(localStorage.getItem(SESSION_KEY));
+            const session = JSON.parse(localStorage.getItem(SESSION_KEY));
+            if (!session?.userId && !session?.email) return null;
+            const store = loadStore();
+            const user = session.userId
+                ? store.users[session.userId]
+                : Object.values(store.users).find((u) => u.email === String(session.email || '').toLowerCase());
+            if (!user) return null;
+            return { id: user.id, email: user.email, name: user.name || '', provider: 'local' };
         } catch {
             return null;
         }
     }
 
-    function setSession(session) {
-        if (!session) localStorage.removeItem(SESSION_KEY);
-        else localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-    }
-
-    function currentUser() {
-        const session = getSession();
-        if (!session || !session.email) return null;
-        const store = loadStore();
-        const user = store.users[session.email.toLowerCase()];
-        if (!user) return null;
-        return {
-            id: user.id,
-            email: user.email,
-            name: user.name || '',
-            createdAt: user.createdAt
-        };
-    }
-
     async function register({ email, password, name }) {
-        const normalized = String(email || '').trim().toLowerCase();
-        if (!normalized || !normalized.includes('@')) throw new Error('Ange en giltig e-postadress');
-        if (!password || password.length < 6) throw new Error('Lösenordet måste vara minst 6 tecken');
-
-        const store = loadStore();
-        if (store.users[normalized]) throw new Error('Det finns redan ett konto med den e-postadressen');
-
-        const salt = uid('salt');
-        const passwordHash = await hashPassword(password, salt);
-        const user = {
-            id: uid('user'),
-            email: normalized,
-            name: (name || '').trim(),
-            salt,
-            passwordHash,
-            createdAt: new Date().toISOString(),
-            plans: {}
-        };
-        store.users[normalized] = user;
-        saveStore(store);
-        setSession({ email: normalized, userId: user.id });
-        return currentUser();
+        if (global.ClerkAuth?.signUpWithPassword) {
+            const user = await global.ClerkAuth.signUpWithPassword({ email, password, name });
+            ensureUserRecord(user);
+            return currentUser();
+        }
+        throw new Error('Skapa konto via Google, Apple eller e-post (Clerk).');
     }
 
     async function login({ email, password }) {
-        const normalized = String(email || '').trim().toLowerCase();
-        const store = loadStore();
-        const user = store.users[normalized];
-        if (!user) throw new Error('Fel e-post eller lösenord');
-        const passwordHash = await hashPassword(password, user.salt);
-        if (passwordHash !== user.passwordHash) throw new Error('Fel e-post eller lösenord');
-        setSession({ email: normalized, userId: user.id });
-        return currentUser();
+        if (global.ClerkAuth?.signInWithPassword) {
+            const user = await global.ClerkAuth.signInWithPassword({ email, password });
+            ensureUserRecord(user);
+            return currentUser();
+        }
+        throw new Error('Logga in via Google, Apple eller e-post (Clerk).');
     }
 
-    function logout() {
-        setSession(null);
+    async function loginWithOAuth(provider) {
+        if (!global.ClerkAuth?.signInWithOAuth) {
+            throw new Error('Social inloggning är inte tillgänglig ännu.');
+        }
+        await global.ClerkAuth.signInWithOAuth(provider);
+    }
+
+    async function logout() {
+        localStorage.removeItem(SESSION_KEY);
+        if (global.ClerkAuth?.signOut) await global.ClerkAuth.signOut();
     }
 
     function requireUser() {
@@ -106,7 +142,8 @@
     function withUser(mutator) {
         const user = requireUser();
         const store = loadStore();
-        const record = store.users[user.email];
+        ensureUserRecord(user);
+        const record = store.users[user.id];
         if (!record) throw new Error('Användaren hittades inte');
         const result = mutator(record);
         saveStore(store);
@@ -116,7 +153,8 @@
     function listPlans() {
         const user = requireUser();
         const store = loadStore();
-        const userRecord = store.users[user.email];
+        ensureUserRecord(user);
+        const userRecord = store.users[user.id];
         let dirty = false;
         const plans = Object.values(userRecord.plans || {}).map((p) => {
             const before = p.calorieTarget;
@@ -144,7 +182,8 @@
     function getPlan(planId) {
         const user = requireUser();
         const store = loadStore();
-        const plan = store.users[user.email].plans[planId];
+        ensureUserRecord(user);
+        const plan = store.users[user.id].plans[planId];
         if (!plan) throw new Error('Kostschemat hittades inte');
         const before = plan.calorieTarget;
         if (global.NutritionCore) NutritionCore.repairPlanCalories(plan);
@@ -239,6 +278,7 @@
         currentUser,
         register,
         login,
+        loginWithOAuth,
         logout,
         listPlans,
         getPlan,

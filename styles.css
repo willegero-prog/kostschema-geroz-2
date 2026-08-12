@@ -1842,11 +1842,86 @@ body::before {
     margin-top: 8px;
 }
 
-.auth-note {
-    margin-top: 14px;
-    font-size: 0.75rem;
+.oauth-buttons {
+    display: grid;
+    gap: 10px;
+    margin: 8px 0 16px;
+}
+
+.oauth-btn {
+    width: 100%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 12px 16px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.oauth-btn:hover {
+    transform: translateY(-1px);
+    background: rgba(255, 255, 255, 0.14);
+}
+
+.oauth-btn.google {
+    border-color: rgba(66, 133, 244, 0.55);
+}
+
+.oauth-btn.apple {
+    border-color: rgba(255, 255, 255, 0.35);
+    background: rgba(0, 0, 0, 0.35);
+}
+
+.oauth-icon {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    font-weight: 800;
+    background: #fff;
+    color: #4285f4;
+}
+
+.oauth-btn.apple .oauth-icon {
+    background: #111;
+    color: #fff;
+}
+
+.oauth-btn.apple .oauth-icon::before {
+    content: '';
+    width: 12px;
+    height: 14px;
+    display: block;
+    background: currentColor;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 384 512'%3E%3Cpath fill='black' d='M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5c0 26.3 4.8 53.3 14.4 81.2 12.8 36.8 59 127 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-68 35.9-14.9 17.9-27.6 46.7-24.1 73.9 26.4 2 51.5-13.1 68.1-37.3z'/%3E%3C/svg%3E") center / contain no-repeat;
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 384 512'%3E%3Cpath fill='black' d='M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5c0 26.3 4.8 53.3 14.4 81.2 12.8 36.8 59 127 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-68 35.9-14.9 17.9-27.6 46.7-24.1 73.9 26.4 2 51.5-13.1 68.1-37.3z'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+.auth-divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 4px 0 14px;
     color: var(--text-secondary);
-    line-height: 1.4;
+    font-size: 0.8rem;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: rgba(255, 255, 255, 0.15);
 }
 
 .save-plan-btn {
