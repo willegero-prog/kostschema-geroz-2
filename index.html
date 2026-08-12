@@ -75,6 +75,17 @@
         <div class="info-modal-content auth-modal-content">
             <button class="info-modal-close" id="auth-modal-close">&times;</button>
             <h3 id="auth-modal-title">Logga in</h3>
+            <div class="oauth-buttons">
+                <button type="button" class="oauth-btn google" id="auth-google-btn">
+                    <span class="oauth-icon" aria-hidden="true">G</span>
+                    Fortsätt med Google
+                </button>
+                <button type="button" class="oauth-btn apple" id="auth-apple-btn">
+                    <span class="oauth-icon" aria-hidden="true"></span>
+                    Fortsätt med Apple
+                </button>
+            </div>
+            <div class="auth-divider"><span>eller med e-post</span></div>
             <div class="auth-mode-toggle">
                 <button type="button" class="gender-btn selected" id="auth-mode-login">Logga in</button>
                 <button type="button" class="gender-btn" id="auth-mode-register">Skapa konto</button>
@@ -93,7 +104,6 @@
                     <input type="password" id="auth-password" required autocomplete="current-password" minlength="6" placeholder="Minst 6 tecken">
                 </div>
                 <button type="submit" class="nav-btn primary" id="auth-submit-btn">Logga in</button>
-                <p class="auth-note">Preview: konton sparas lokalt i din webbläsare. Google/Apple-inloggning kan kopplas in när backend aktiveras.</p>
             </form>
         </div>
     </div>
@@ -470,6 +480,7 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="js/nutrition-core.js"></script>
+    <script src="js/clerk-auth.js"></script>
     <script src="js/account-store.js"></script>
     <script src="js/weight-engine.js"></script>
     <script src="js/pdf-export.js"></script>

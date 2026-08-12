@@ -126,6 +126,15 @@
         }
     }
 
+    async function handleOAuth(provider) {
+        try {
+            showToast(provider === 'apple' ? 'Öppnar Apple…' : 'Öppnar Google…');
+            await AccountStore.loginWithOAuth(provider);
+        } catch (err) {
+            showToast(err.message || 'Kunde inte starta inloggning', true);
+        }
+    }
+
     function openDashboard() {
         if (!AccountStore.currentUser()) {
             openAuthModal('login');
@@ -848,10 +857,16 @@
 
     function initAccountUi() {
         refreshAuthUi();
+
+        if (global.ClerkAuth) {
+            ClerkAuth.init().then(() => refreshAuthUi()).catch(() => {});
+            ClerkAuth.onAuthChange(() => refreshAuthUi());
+        }
+
         $('auth-login-btn')?.addEventListener('click', () => openAuthModal('login'));
         $('auth-dashboard-btn')?.addEventListener('click', openDashboard);
-        $('auth-logout-btn')?.addEventListener('click', () => {
-            AccountStore.logout();
+        $('auth-logout-btn')?.addEventListener('click', async () => {
+            await AccountStore.logout();
             refreshAuthUi();
             closeDashboard();
             showToast('Utloggad');
@@ -860,6 +875,8 @@
         $('auth-mode-login')?.addEventListener('click', () => setAuthMode('login'));
         $('auth-mode-register')?.addEventListener('click', () => setAuthMode('register'));
         $('auth-form')?.addEventListener('submit', handleAuthSubmit);
+        $('auth-google-btn')?.addEventListener('click', () => handleOAuth('google'));
+        $('auth-apple-btn')?.addEventListener('click', () => handleOAuth('apple'));
         $('auth-modal')?.addEventListener('click', (e) => {
             if (e.target.id === 'auth-modal') closeAuthModal();
         });
