@@ -135,7 +135,7 @@
         // Fallback without Clerk (local only)
         const normalized = String(email || '').trim().toLowerCase();
         if (!normalized || !normalized.includes('@')) throw new Error('Ange en giltig e-postadress');
-        if (!password || password.length < 6) throw new Error('Lösenordet måste vara minst 6 tecken');
+        if (!password || password.length < 15) throw new Error('Lösenordet måste vara minst 15 tecken');
         const store = loadStore();
         const existing = Object.values(store.users).find((u) => u.email === normalized);
         if (existing) throw new Error('Det finns redan ett konto med den e-postadressen');
