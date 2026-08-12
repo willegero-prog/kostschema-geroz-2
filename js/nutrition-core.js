@@ -4,9 +4,16 @@
  */
 (function (global) {
     const macroDistributions = {
-        bulk: { protein: 25, carbs: 55, fat: 20 },
-        maintain: { protein: 30, carbs: 50, fat: 20 },
-        cut: { protein: 35, carbs: 45, fat: 20 }
+        // carbs/fat shares used for remaining calories after protein is set from body weight
+        bulk: { carbs: 55, fat: 20 },
+        maintain: { carbs: 50, fat: 20 },
+        cut: { carbs: 45, fat: 20 }
+    };
+
+    const proteinPerKgByGoal = {
+        bulk: 2.2,
+        cut: 2.5,
+        maintain: 2
     };
 
     const activityMultipliers = {
@@ -71,7 +78,7 @@
         }
 
         plan.calorieTarget = expected;
-        plan.macros = macrosForCalories(expected, plan.goal);
+        plan.macros = macrosForCalories(expected, plan.goal, weight);
 
         const days = plan.mealPlanDays || [];
         const avgDay = days.length
@@ -88,15 +95,46 @@
         return plan;
     }
 
-    function macrosForCalories(calories, goal) {
-        const macros = macroDistributions[goal] || macroDistributions.maintain;
+    /**
+     * Protein is always body weight × goal multiplier.
+     * Remaining calories are split between carbs and fat using the existing ratio.
+     */
+    function macrosForCalories(calories, goal, weight) {
+        const dist = macroDistributions[goal] || macroDistributions.maintain;
+        const cal = Math.max(0, Number(calories) || 0);
+        const w = Number(weight);
+        const proteinMult = proteinPerKgByGoal[goal] ?? proteinPerKgByGoal.maintain;
+
+        let proteinG;
+        if (Number.isFinite(w) && w > 0) {
+            proteinG = Math.round(w * proteinMult);
+        } else {
+            // Fallback if weight is missing: approximate from remaining-style split
+            proteinG = Math.round((cal * 0.25) / 4);
+        }
+
+        const proteinCal = proteinG * 4;
+        const remainingCal = Math.max(0, cal - proteinCal);
+        const carbFatParts = (dist.carbs || 0) + (dist.fat || 0) || 1;
+        const carbsCal = remainingCal * ((dist.carbs || 0) / carbFatParts);
+        const fatCal = remainingCal * ((dist.fat || 0) / carbFatParts);
+        const carbsG = Math.round(carbsCal / 4);
+        const fatG = Math.round(fatCal / 9);
+
+        const proteinPct = cal > 0 ? Math.round((proteinCal / cal) * 100) : 0;
+        const carbsPct = cal > 0 ? Math.round(((carbsG * 4) / cal) * 100) : 0;
+        const fatPct = Math.max(0, 100 - proteinPct - carbsPct);
+
         return {
-            proteinPct: macros.protein,
-            carbsPct: macros.carbs,
-            fatPct: macros.fat,
-            proteinG: Math.round((calories * macros.protein / 100) / 4),
-            carbsG: Math.round((calories * macros.carbs / 100) / 4),
-            fatG: Math.round((calories * macros.fat / 100) / 9)
+            proteinPct,
+            carbsPct,
+            fatPct,
+            protein: proteinPct,
+            carbs: carbsPct,
+            fat: fatPct,
+            proteinG,
+            carbsG,
+            fatG
         };
     }
 
@@ -108,7 +146,7 @@
         };
         const snacks = planSnapshot.snacks || { snack1: false, snack2: false };
         const trainingDays = planSnapshot.trainingDays || [];
-        const macros = macroDistributions[planSnapshot.goal] || macroDistributions.maintain;
+        const weight = Number(planSnapshot.currentWeight) || Number(planSnapshot.startingWeight) || Number(planSnapshot.weight);
 
         const mealOrder = [];
         mealOrder.push({ name: 'Frukost', distribution: snacks.snack1 ? 0.25 : (snacks.snack2 ? 0.30 : 0.30) });
@@ -123,9 +161,7 @@
             const isTrainingDay = trainingDays.includes(day);
             const dayMultiplier = isTrainingDay ? 1.1 : 0.95;
             const dayCalories = Math.round(calorieTarget * dayMultiplier);
-            const dayProtein = (dayCalories * macros.protein / 100) / 4;
-            const dayCarbs = (dayCalories * macros.carbs / 100) / 4;
-            const dayFat = (dayCalories * macros.fat / 100) / 9;
+            const dayMacros = macrosForCalories(dayCalories, planSnapshot.goal, weight);
 
             return {
                 name: dayNames[day],
@@ -134,9 +170,9 @@
                 calories: dayCalories,
                 meals: mealOrder.map((meal) => ({
                     name: meal.name,
-                    protein: Math.round(dayProtein * meal.distribution),
-                    carbs: Math.round(dayCarbs * meal.distribution),
-                    fat: Math.round(dayFat * meal.distribution),
+                    protein: Math.round(dayMacros.proteinG * meal.distribution),
+                    carbs: Math.round(dayMacros.carbsG * meal.distribution),
+                    fat: Math.round(dayMacros.fatG * meal.distribution),
                     calories: Math.round(dayCalories * meal.distribution)
                 }))
             };
@@ -198,6 +234,7 @@
 
     global.NutritionCore = {
         macroDistributions,
+        proteinPerKgByGoal,
         activityMultipliers,
         calculateBMR,
         calculateTDEE,

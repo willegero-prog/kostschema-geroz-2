@@ -268,7 +268,7 @@
         const bmr = Nutrition.calculateBMR(plan.age, plan.height, weight, plan.gender);
         const tdee = Nutrition.calculateTDEE(bmr, plan.activityLevel || 'moderate');
         const calorieTarget = Nutrition.calorieTargetFrom(tdee, plan.goal, plan.calorieAdjustment);
-        const macros = Nutrition.macrosForCalories(calorieTarget, plan.goal);
+        const macros = Nutrition.macrosForCalories(calorieTarget, plan.goal, weight);
         const mealPlanDays = Nutrition.rebuildMealPlanDays(plan, calorieTarget);
         return { weight, bmr, tdee, calorieTarget, macros, mealPlanDays };
     }

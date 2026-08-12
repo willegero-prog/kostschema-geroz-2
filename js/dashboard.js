@@ -770,7 +770,7 @@
                 throw new Error('Kunde inte beräkna hela dagens kalorimål. Kontrollera BMR/TDEE i generatorn.');
             }
 
-            const macros = NutritionCore.macrosForCalories(calorieTarget, st.goal);
+            const macros = NutritionCore.macrosForCalories(calorieTarget, st.goal, st.weight);
             const targetWeight = st.goal === 'maintain'
                 ? null
                 : (st.targetWeight != null && !Number.isNaN(Number(st.targetWeight))

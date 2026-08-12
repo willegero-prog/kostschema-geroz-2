@@ -30,6 +30,17 @@ assert.equal(calculateBMR(23, 183, 80, 'female'), 1668);
 assert.equal(calorieTargetFrom(2843, 'cut', 400), 2443);
 assert.equal(calorieTargetFrom(2500, 'bulk', 500), 3000);
 
+const macrosBulk = sandbox.NutritionCore.macrosForCalories(3000, 'bulk', 70);
+assert.equal(macrosBulk.proteinG, Math.round(70 * 2.2));
+assert.ok(macrosBulk.carbsG > 0);
+assert.ok(macrosBulk.fatG > 0);
+
+const macrosCut = sandbox.NutritionCore.macrosForCalories(2200, 'cut', 80);
+assert.equal(macrosCut.proteinG, Math.round(80 * 2.5));
+
+const macrosMaintain = sandbox.NutritionCore.macrosForCalories(2500, 'maintain', 75);
+assert.equal(macrosMaintain.proteinG, Math.round(75 * 2));
+
 const brokenBulk = {
     goal: 'bulk',
     gender: 'male',
@@ -145,7 +156,7 @@ const bulkPlan = {
 };
 bulkPlan.tdee = sandbox.NutritionCore.calculateTDEE(bulkPlan.bmr, 'moderate');
 bulkPlan.calorieTarget = calorieTargetFrom(bulkPlan.tdee, 'bulk', 400);
-bulkPlan.macros = sandbox.NutritionCore.macrosForCalories(bulkPlan.calorieTarget, 'bulk');
+bulkPlan.macros = sandbox.NutritionCore.macrosForCalories(bulkPlan.calorieTarget, 'bulk', bulkPlan.currentWeight);
 const originalCalories = bulkPlan.calorieTarget;
 
 const bulkStart = new Date('2026-07-01');

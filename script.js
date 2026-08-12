@@ -566,7 +566,6 @@ function getMealDisplayName(name) {
 }
 
 function generateMealPlan() {
-    const macros = macroDistributions[state.goal];
     const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
     
     // Calculate daily calories
@@ -606,21 +605,14 @@ function generateMealPlan() {
         }
     }
 
-    // Calculate macros per gram
-    const proteinPerGram = 4; // calories per gram
-    const carbsPerGram = 4;
-    const fatPerGram = 9;
-
-    // Calculate total macros for the day
-    const totalProtein = (baseCalories * macros.protein / 100) / proteinPerGram;
-    const totalCarbs = (baseCalories * macros.carbs / 100) / carbsPerGram;
-    const totalFat = (baseCalories * macros.fat / 100) / fatPerGram;
+    const dailyCalorieTarget = Math.round(baseCalories);
+    const computedMacros = window.NutritionCore
+        ? NutritionCore.macrosForCalories(dailyCalorieTarget, state.goal, state.weight)
+        : { protein: 0, carbs: 0, fat: 0, proteinG: 0, carbsG: 0, fatG: 0 };
 
     // Adjust for training days (add 10% more calories on training days)
     const trainingDayMultiplier = 1.1;
     const restDayMultiplier = 0.95;
-
-    const dailyCalorieTarget = Math.round(baseCalories);
 
     const mealPlan = {
         userInfo: {
@@ -634,7 +626,14 @@ function generateMealPlan() {
             calorieAdjustment: state.goal === 'maintain' ? 'Behålla' : state.calorieAdjustment
         },
         dailyCalorieTarget,
-        macros: macros,
+        macros: {
+            protein: computedMacros.proteinPct ?? computedMacros.protein,
+            carbs: computedMacros.carbsPct ?? computedMacros.carbs,
+            fat: computedMacros.fatPct ?? computedMacros.fat,
+            proteinG: computedMacros.proteinG,
+            carbsG: computedMacros.carbsG,
+            fatG: computedMacros.fatG
+        },
         days: [],
         calorieRating
     };
@@ -692,9 +691,12 @@ function generateMealPlan() {
         const dayMultiplier = isTrainingDay ? trainingDayMultiplier : restDayMultiplier;
         
         const dayCalories = baseCalories * dayMultiplier;
-        const dayProtein = (dayCalories * macros.protein / 100) / proteinPerGram;
-        const dayCarbs = (dayCalories * macros.carbs / 100) / carbsPerGram;
-        const dayFat = (dayCalories * macros.fat / 100) / fatPerGram;
+        const dayMacros = window.NutritionCore
+            ? NutritionCore.macrosForCalories(dayCalories, state.goal, state.weight)
+            : { proteinG: 0, carbsG: 0, fatG: 0 };
+        const dayProtein = dayMacros.proteinG;
+        const dayCarbs = dayMacros.carbsG;
+        const dayFat = dayMacros.fatG;
 
         const dayPlan = {
             name: dayNames[day],
