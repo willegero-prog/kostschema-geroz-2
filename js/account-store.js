@@ -103,22 +103,73 @@
         }
     }
 
+    async function hashPassword(password, salt) {
+        const enc = new TextEncoder();
+        const data = enc.encode(`${salt}:${password}`);
+        const digest = await crypto.subtle.digest('SHA-256', data);
+        return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    function setLocalSession(session) {
+        if (!session) localStorage.removeItem(SESSION_KEY);
+        else localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+    }
+
+    async function clerkConfigured() {
+        if (!global.ClerkAuth?.init) return false;
+        try {
+            const result = await global.ClerkAuth.init();
+            return Boolean(result?.configured);
+        } catch {
+            return false;
+        }
+    }
+
     async function register({ email, password, name }) {
-        if (global.ClerkAuth?.signUpWithPassword) {
+        if (await clerkConfigured()) {
             const user = await global.ClerkAuth.signUpWithPassword({ email, password, name });
             ensureUserRecord(user);
             return currentUser();
         }
-        throw new Error('Skapa konto via Google, Apple eller e-post (Clerk).');
+
+        // Fallback without Clerk (local only)
+        const normalized = String(email || '').trim().toLowerCase();
+        if (!normalized || !normalized.includes('@')) throw new Error('Ange en giltig e-postadress');
+        if (!password || password.length < 6) throw new Error('Lösenordet måste vara minst 6 tecken');
+        const store = loadStore();
+        const existing = Object.values(store.users).find((u) => u.email === normalized);
+        if (existing) throw new Error('Det finns redan ett konto med den e-postadressen');
+        const id = uid('user');
+        const salt = uid('salt');
+        store.users[id] = {
+            id,
+            email: normalized,
+            name: (name || '').trim(),
+            salt,
+            passwordHash: await hashPassword(password, salt),
+            createdAt: new Date().toISOString(),
+            plans: {}
+        };
+        saveStore(store);
+        setLocalSession({ userId: id, email: normalized });
+        return currentUser();
     }
 
     async function login({ email, password }) {
-        if (global.ClerkAuth?.signInWithPassword) {
+        if (await clerkConfigured()) {
             const user = await global.ClerkAuth.signInWithPassword({ email, password });
             ensureUserRecord(user);
             return currentUser();
         }
-        throw new Error('Logga in via Google, Apple eller e-post (Clerk).');
+
+        const normalized = String(email || '').trim().toLowerCase();
+        const store = loadStore();
+        const user = Object.values(store.users).find((u) => u.email === normalized);
+        if (!user?.passwordHash || !user.salt) throw new Error('Fel e-post eller lösenord');
+        const passwordHash = await hashPassword(password, user.salt);
+        if (passwordHash !== user.passwordHash) throw new Error('Fel e-post eller lösenord');
+        setLocalSession({ userId: user.id, email: normalized });
+        return currentUser();
     }
 
     async function loginWithOAuth(provider) {
